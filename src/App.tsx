@@ -274,6 +274,9 @@ function App() {
     };
   }, [priceData]);
 
+  // 清除 FF14 特殊字符
+  const cleanKeywordText = (text: string) => text.replace(/[\uE03C\uE0BB]/g, '');
+
   const handleSearch = () => doSearch(keyword);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -284,12 +287,13 @@ function App() {
   const handlePasteSearch = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      if (!text.trim()) {
+      const cleaned = cleanKeywordText(text).trim();
+      if (!cleaned) {
         message.warning("剪贴板为空");
         return;
       }
-      setKeyword(text.trim());
-      doSearch(text.trim());
+      setKeyword(cleaned);
+      doSearch(cleaned);
     } catch {
       message.error("读取剪贴板失败，请手动粘贴");
     }
@@ -332,8 +336,9 @@ function App() {
                 placeholder="输入物品名称"
                 value={keyword}
                 onChange={(e) => {
-                  setKeyword(e.target.value);
-                  if (!e.target.value.trim()) {
+                  const cleaned = cleanKeywordText(e.target.value);
+                  setKeyword(cleaned);
+                  if (!cleaned.trim()) {
                     setShowResults(false);
                     setResults([]);
                   }
