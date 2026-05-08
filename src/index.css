@@ -18,6 +18,12 @@
   --gold-bg: rgba(200, 148, 60, 0.1);
   --stat-green: #16a34a;
   --stat-gold: #c8943c;
+  /* antd 语义色（与 AppWrapper 共享） */
+  --ant-color-success: #22c55e;
+  --ant-color-warning: #f59e0b;
+  --ant-color-error: #ef4444;
+  --ant-color-info: #3b82f6;
+  --ant-box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04);
   --social-bg: rgba(245, 243, 240, 0.6);
   --shadow-sm: rgba(0, 0, 0, 0.04) 0 1px 3px, rgba(0, 0, 0, 0.02) 0 1px 2px;
   --shadow-md: rgba(0, 0, 0, 0.06) 0 4px 16px, rgba(0, 0, 0, 0.04) 0 2px 6px;
@@ -67,6 +73,12 @@
     --gold-bg: rgba(212, 168, 75, 0.12);
     --stat-green: #4ade80;
     --stat-gold: #d4a84b;
+    /* antd 语义色（暗色） */
+    --ant-color-success: #4ade80;
+    --ant-color-warning: #fbbf24;
+    --ant-color-error: #f87171;
+    --ant-color-info: #60a5fa;
+    --ant-box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.2);
     --social-bg: rgba(34, 32, 41, 0.6);
     --shadow-sm: rgba(0, 0, 0, 0.3) 0 1px 3px, rgba(0, 0, 0, 0.15) 0 1px 2px;
     --shadow-md: rgba(0, 0, 0, 0.4) 0 4px 16px, rgba(0, 0, 0, 0.2) 0 2px 6px;
