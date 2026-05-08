@@ -527,6 +527,7 @@ function App() {
                           size="small"
                           pagination={{ pageSize: 15, showSizeChanger: false }}
                           scroll={{ x: 450 }}
+                          rowClassName={(_, index) => index < 3 ? 'top-three-row' : ''}
                         />
                       ) : (
                         <Empty description="暂无出售数据" />
@@ -584,6 +585,7 @@ function App() {
                           size="small"
                           pagination={{ pageSize: 15, showSizeChanger: false }}
                           scroll={{ x: 450 }}
+                          rowClassName={(_, index) => index < 3 ? 'top-three-row' : ''}
                         />
                       ) : (
                         <Empty description="暂无出售数据" />

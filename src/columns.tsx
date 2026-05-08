@@ -1,5 +1,4 @@
 import { Tag } from "antd";
-import type { UniversalisListing } from "./types";
 
 export const listingColumns = [
   {
@@ -29,8 +28,6 @@ export const listingColumns = [
     dataIndex: "pricePerUnit",
     key: "pricePerUnit",
     width: 120,
-    sorter: (a: UniversalisListing, b: UniversalisListing) => a.pricePerUnit - b.pricePerUnit,
-    defaultSortOrder: "ascend" as const,
     render: (v: number) => (
       <span className="price-cell">
         {v.toLocaleString()} <span className="gil-suffix">Gil</span>
