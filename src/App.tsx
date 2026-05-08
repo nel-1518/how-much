@@ -29,7 +29,7 @@ import {
   SnippetsOutlined,
 } from "@ant-design/icons";
 import type { ItemResult, SearchResponse, UniversalisResponse, SearchHistoryItem } from "./types";
-import { REGION_MAP, MAX_HISTORY } from "./constants";
+import { REGION_MAP, MAX_HISTORY, REGION_KEY, DEFAULT_REGION } from "./constants";
 import { loadHistory, saveHistory } from "./history";
 import { listingColumns, historyColumns } from "./columns";
 import "./App.css";
@@ -43,8 +43,8 @@ function App() {
   const [showResults, setShowResults] = useState(false);
   const [viewTab, setViewTab] = useState<string>("listings");
 
-  // 查价
-  const [region, setRegion] = useState("中国");
+  // 查价 — 默认使用上次选中的大区
+  const [region, setRegion] = useState(() => localStorage.getItem(REGION_KEY) || DEFAULT_REGION);
   const [selectedItem, setSelectedItem] = useState<ItemResult | null>(null);
   const [priceLoading, setPriceLoading] = useState(false);
   const [priceData, setPriceData] = useState<UniversalisResponse | null>(null);
@@ -175,6 +175,13 @@ function App() {
           setSelectedItem(match);
           setShowResults(false);
           fetchPriceData(match.row_id, region);
+          // 刷新历史时间，提到最前
+          setSearchHistory((prev) => {
+            const filtered = prev.filter((h) => h.id !== item.id);
+            const next = [{ id: item.id, name: item.name, time: Date.now(), pinned: item.pinned }, ...filtered].slice(0, MAX_HISTORY);
+            saveHistory(next);
+            return next;
+          });
         }
       })
       .catch(() => {
@@ -473,6 +480,7 @@ function App() {
               onChange={(v) => {
                 const val = v as string;
                 setRegion(val);
+                localStorage.setItem(REGION_KEY, val);
                 if (selectedItem) {
                   fetchPriceData(selectedItem.row_id, val);
                 }
