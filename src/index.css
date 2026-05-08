@@ -1,0 +1,217 @@
+/* ===== CSS 变量 ===== */
+:root {
+  /* 亮色主题 */
+  --text: #4a4458;
+  --text-secondary: #78717f;
+  --text-h: #1a1523;
+  --bg: #faf9f7;
+  --bg-card: #ffffff;
+  --bg-elevated: #f5f3f0;
+  --border: #e8e4dd;
+  --border-light: #f0ece6;
+  --code-bg: #f3f0ea;
+  --accent: #8b5cf6;
+  --accent-light: #a78bfa;
+  --accent-bg: rgba(139, 92, 246, 0.08);
+  --accent-border: rgba(139, 92, 246, 0.3);
+  --gold: #c8943c;
+  --gold-bg: rgba(200, 148, 60, 0.1);
+  --stat-green: #16a34a;
+  --stat-gold: #c8943c;
+  --social-bg: rgba(245, 243, 240, 0.6);
+  --shadow-sm: rgba(0, 0, 0, 0.04) 0 1px 3px, rgba(0, 0, 0, 0.02) 0 1px 2px;
+  --shadow-md: rgba(0, 0, 0, 0.06) 0 4px 16px, rgba(0, 0, 0, 0.04) 0 2px 6px;
+  --shadow-lg: rgba(0, 0, 0, 0.08) 0 12px 32px, rgba(0, 0, 0, 0.04) 0 4px 12px;
+  --shadow-xl: rgba(0, 0, 0, 0.12) 0 20px 48px, rgba(0, 0, 0, 0.06) 0 8px 20px;
+
+  --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --heading: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'JetBrains Mono', 'Fira Code', ui-monospace, Consolas, monospace;
+
+  /* 基础排版 */
+  font: 16px/1.6 var(--sans);
+  letter-spacing: 0.01em;
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* 全局过渡 */
+  transition: color 0.3s ease, background 0.3s ease;
+
+  @media (max-width: 1024px) {
+    font-size: 15px;
+  }
+}
+
+/* ===== 暗色主题 ===== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #b0aeb8;
+    --text-secondary: #787580;
+    --text-h: #edecf0;
+    --bg: #131217;
+    --bg-card: #1c1a22;
+    --bg-elevated: #222029;
+    --border: #2d2a35;
+    --border-light: #25232d;
+    --code-bg: #222029;
+    --accent: #a78bfa;
+    --accent-light: #c4b5fd;
+    --accent-bg: rgba(167, 139, 250, 0.12);
+    --accent-border: rgba(167, 139, 250, 0.35);
+    --gold: #d4a84b;
+    --gold-bg: rgba(212, 168, 75, 0.12);
+    --stat-green: #4ade80;
+    --stat-gold: #d4a84b;
+    --social-bg: rgba(34, 32, 41, 0.6);
+    --shadow-sm: rgba(0, 0, 0, 0.3) 0 1px 3px, rgba(0, 0, 0, 0.15) 0 1px 2px;
+    --shadow-md: rgba(0, 0, 0, 0.4) 0 4px 16px, rgba(0, 0, 0, 0.2) 0 2px 6px;
+    --shadow-lg: rgba(0, 0, 0, 0.5) 0 12px 32px, rgba(0, 0, 0, 0.2) 0 4px 12px;
+    --shadow-xl: rgba(0, 0, 0, 0.6) 0 20px 48px, rgba(0, 0, 0, 0.3) 0 8px 20px;
+  }
+}
+
+/* ===== 全局重置 ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  /* 微妙渐变背景 */
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%, var(--accent-bg), transparent),
+    radial-gradient(ellipse 50% 50% at 80% 50%, var(--gold-bg), transparent);
+  background-attachment: fixed;
+  min-height: 100svh;
+}
+
+#root {
+  width: 100%;
+  margin: 0;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== 滚动条 ===== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* ===== 选中文本 ===== */
+::selection {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+/* ===== 排版 ===== */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--heading);
+  font-weight: 600;
+  color: var(--text-h);
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  font-size: 48px;
+  line-height: 1.15;
+  margin: 32px 0;
+  background: linear-gradient(135deg, var(--text-h) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  @media (max-width: 1024px) {
+    font-size: 32px;
+    margin: 20px 0;
+  }
+}
+
+h2 {
+  font-size: 22px;
+  line-height: 1.3;
+  margin: 0 0 8px;
+  @media (max-width: 1024px) {
+    font-size: 19px;
+  }
+}
+
+p {
+  margin: 0;
+  line-height: 1.65;
+}
+
+/* ===== 代码 / 计数器 ===== */
+code,
+.counter {
+  font-family: var(--mono);
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px;
+  color: var(--text-h);
+}
+
+code {
+  font-size: 0.88em;
+  line-height: 1.4;
+  padding: 3px 8px;
+  background: var(--code-bg);
+  border: 1px solid var(--border-light);
+}
+
+/* ===== 链接 ===== */
+a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+a:hover {
+  color: var(--accent-light);
+}
+
+/* ===== 聚焦环 ===== */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ===== 通用动画 ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
