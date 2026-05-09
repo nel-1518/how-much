@@ -79,7 +79,7 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
           setSelectedItem(match);
           setShowResults(false);
           fetchPriceData(match.row_id, region);
-          addToHistory(item.id, item.name);
+          if (!item.pinned) addToHistory(item.id, item.name);
         }
       })
       .catch(() => { message.error("请求失败，请稍后重试"); setResults([]); })

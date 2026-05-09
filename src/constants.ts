@@ -9,6 +9,7 @@ export const REGION_MAP: Record<string, string> = {
 
 // 搜索历史
 export const HISTORY_KEY = "ff14_search_history";
+export const HISTORY_PINNED_KEY = "ff14_search_history_pinned";
 export const MAX_HISTORY = 20;
 
 // 上次选中大区
