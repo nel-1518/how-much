@@ -1,3 +1,9 @@
+// 大区图标
+import area_luxingniao from "./assets/area_luxingniao.png";
+import area_maoxiaopang from "./assets/area_maoxiaopang.png";
+import area_moguli from "./assets/area_moguli.png";
+import area_doudouchai from "./assets/area_doudouchai.png";
+
 // 大区 → API 路径映射
 export const REGION_MAP: Record<string, string> = {
   "中国": "china",
@@ -5,6 +11,46 @@ export const REGION_MAP: Record<string, string> = {
   "莫古力": "莫古力",
   "猫小胖": "猫小胖",
   "豆豆柴": "豆豆柴",
+};
+
+// 服务器 → 大区 映射
+export const WORLD_TO_DC: Record<string, string> = {
+  "拉诺西亚": "陆行鸟",
+  "幻影群岛": "陆行鸟",
+  "神意之地": "陆行鸟",
+  "萌芽池": "陆行鸟",
+  "红玉海": "陆行鸟",
+  "宇宙和音": "陆行鸟",
+  "沃仙曦染": "陆行鸟",
+  "晨曦王座": "陆行鸟",
+  "潮风亭": "莫古力",
+  "神拳痕": "莫古力",
+  "白银乡": "莫古力",
+  "白金幻象": "莫古力",
+  "旅人栈桥": "莫古力",
+  "拂晓之间": "莫古力",
+  "龙巢神殿": "莫古力",
+  "梦羽宝境": "莫古力",
+  "紫水栈桥": "猫小胖",
+  "延夏": "猫小胖",
+  "静语庄园": "猫小胖",
+  "摩杜纳": "猫小胖",
+  "海猫茶屋": "猫小胖",
+  "柔风海湾": "猫小胖",
+  "琥珀原": "猫小胖",
+  "水晶塔": "豆豆柴",
+  "银泪湖": "豆豆柴",
+  "太阳海岸": "豆豆柴",
+  "伊修加德": "豆豆柴",
+  "红茶川": "豆豆柴",
+};
+
+// 大区 → 图标
+export const DC_ICON_MAP: Record<string, string> = {
+  "陆行鸟": area_luxingniao,
+  "莫古力": area_moguli,
+  "猫小胖": area_maoxiaopang,
+  "豆豆柴": area_doudouchai,
 };
 
 // 搜索历史

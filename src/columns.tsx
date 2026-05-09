@@ -1,12 +1,25 @@
 import { Tag } from "antd";
+import { WORLD_TO_DC, DC_ICON_MAP } from "./constants";
+
+/** 渲染服务器名称 + 大区图标 */
+const renderWorldName = (worldName: string) => {
+  const dc = WORLD_TO_DC[worldName];
+  const icon = dc ? DC_ICON_MAP[dc] : null;
+  return (
+    <span className="world-name">
+      {icon && <img src={icon} alt={dc} className="dc-icon" title={dc} />}
+      {worldName}
+    </span>
+  );
+};
 
 export const listingColumns = [
   {
     title: "服务器",
     dataIndex: "worldName",
     key: "worldName",
-    width: 100,
-    render: (v: string) => <span className="world-name">{v}</span>,
+    width: 110,
+    render: renderWorldName,
   },
   {
     title: "品质",
@@ -59,8 +72,8 @@ export const historyColumns = [
     title: "服务器",
     dataIndex: "worldName",
     key: "worldName",
-    width: 90,
-    render: (v: string) => <span className="world-name">{v}</span>,
+    width: 100,
+    render: renderWorldName,
   },
   {
     title: "品质",

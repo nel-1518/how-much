@@ -501,6 +501,16 @@
 .world-name {
   font-weight: 500;
   font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dc-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 2px;
 }
 
 .time-cell {
