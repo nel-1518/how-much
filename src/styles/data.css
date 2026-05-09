@@ -1,0 +1,422 @@
+/* ===== 查价区域 ===== */
+.price-area {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 16px;
+  animation: fadeInUp 0.45s ease;
+}
+
+/* 物品标题栏 */
+.price-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 4px;
+}
+
+.price-header .ant-typography {
+  font-weight: 700 !important;
+  color: var(--text-h) !important;
+}
+
+.item-name-clickable {
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+.item-name-clickable:hover {
+  opacity: 0.8;
+}
+
+/* ===== 大区 Segmented 美化 ===== */
+.region-segmented {
+  background: var(--bg-elevated) !important;
+  border-radius: 14px !important;
+  padding: 4px;
+  border: 1px solid var(--border-light) !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.region-segmented .ant-segmented-item {
+  border-radius: 10px !important;
+  padding: 0 4px;
+  transition: all 0.25s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.region-segmented .ant-segmented-item-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 2;
+  padding: 4px 14px;
+  min-height: 34px;
+  transition: all 0.25s ease;
+  color: var(--text);
+}
+
+.region-segmented
+  .ant-segmented-item:not(.ant-segmented-item-selected):hover
+  .ant-segmented-item-label {
+  color: var(--accent);
+}
+
+.region-segmented .ant-segmented-item-selected {
+  background: var(--bg-card) !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+.region-segmented .ant-segmented-item-selected .ant-segmented-item-label {
+  color: var(--accent) !important;
+  font-weight: 700;
+}
+
+.region-segmented .ant-segmented-thumb {
+  border-radius: 10px !important;
+  background: var(--bg-card) !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* ===== 数据卡片 ===== */
+.data-card {
+  height: 100%;
+  border-radius: 16px !important;
+  border: 1px solid var(--border-light) !important;
+  background: var(--bg-card) !important;
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
+  overflow: hidden;
+}
+.data-card:hover {
+  box-shadow: var(--shadow-md);
+}
+.data-card .ant-card-head {
+  border-bottom: 1px solid var(--border-light) !important;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 10px 16px;
+  min-height: auto;
+}
+.data-card .ant-card-head-title {
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.data-card .ant-card-body {
+  padding: 10px 14px 12px;
+}
+
+/* ===== 表格优化 ===== */
+.data-card .ant-table {
+  font-size: 14px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.data-card .ant-table-thead > tr > th {
+  background: var(--bg-elevated) !important;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 9px 10px !important;
+  border-bottom: 2px solid var(--border) !important;
+  color: var(--text-secondary) !important;
+}
+.data-card .ant-table-tbody > tr > td {
+  padding: 8px 10px !important;
+  border-bottom: 1px solid var(--border-light) !important;
+}
+.data-card .ant-table-tbody > tr {
+  transition: background 0.15s ease;
+}
+.data-card .ant-table-tbody > tr:hover > td {
+  background: var(--bg-elevated) !important;
+}
+
+/* Ant Design 分页微调 */
+.data-card .ant-pagination {
+  margin: 8px 0 0 !important;
+}
+.data-card .ant-pagination-item,
+.data-card .ant-pagination-prev,
+.data-card .ant-pagination-next {
+  min-width: 28px;
+  height: 28px;
+  line-height: 28px;
+  font-size: 12px;
+}
+
+/* ===== 价格单元格 ===== */
+.price-cell {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--mono);
+  font-size: 14px;
+}
+.total-cell {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.gil-suffix {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+.world-name {
+  font-weight: 500;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dc-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+.time-cell {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ===== 标签 ===== */
+.hq-tag.ant-tag {
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 5px;
+  padding: 2px 8px;
+  line-height: 20px;
+  border: none;
+}
+.nq-tag.ant-tag {
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 5px;
+  padding: 2px 8px;
+  line-height: 20px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: none;
+}
+
+/* ===== 最低单价前三高亮 ===== */
+.top-three-row {
+  background: linear-gradient(
+    90deg,
+    rgba(139, 92, 246, 0.06) 0%,
+    rgba(139, 92, 246, 0.02) 100%
+  );
+}
+
+.top-three-row .world-name {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.top-three-row .price-cell {
+  color: var(--stat-green);
+  font-weight: 800;
+}
+
+.top-three-row .price-cell .gil-suffix {
+  color: var(--stat-green);
+  opacity: 0.6;
+}
+
+.top-three-row:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(139, 92, 246, 0.12) 0%,
+    rgba(139, 92, 246, 0.04) 100%
+  ) !important;
+}
+
+/* ===== 行情概览卡片 ===== */
+.stats-overview-card {
+  border-radius: 16px !important;
+  border: 1px solid var(--border-light) !important;
+  background: var(--bg-card) !important;
+  box-shadow: var(--shadow-sm);
+  margin-top: 16px;
+  animation: fadeInUp 0.4s ease;
+}
+.stats-overview-card .ant-card-head {
+  border-bottom: 1px solid var(--border-light) !important;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 10px 16px;
+  min-height: auto;
+}
+.stats-overview-card .ant-card-head-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+}
+.stats-overview-card .ant-card-body {
+  padding: 12px 16px 16px;
+}
+
+.so-item {
+  text-align: center;
+  padding: 10px 6px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  transition: all 0.25s ease;
+}
+.so-item:hover {
+  background: var(--accent-bg);
+  transform: translateY(-1px);
+}
+
+.so-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.so-label-hint {
+  font-size: 10px;
+  font-weight: 400;
+  opacity: 0.5;
+}
+
+.so-value {
+  font-size: 18px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--mono);
+  color: var(--text-h);
+  line-height: 1.3;
+}
+
+.so-low {
+  color: var(--stat-green);
+}
+
+.so-gil {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.so-dec {
+  font-size: 13px;
+  font-weight: 400;
+  opacity: 0.45;
+}
+
+.so-na {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+/* ===== 移动端视图切换 ===== */
+.view-tab-bar {
+  display: none;
+  margin-bottom: 12px;
+}
+
+.data-row-mobile {
+  display: none;
+}
+
+/* ===== 空状态 / 加载 ===== */
+.data-card .ant-empty {
+  padding: 32px 0;
+}
+.data-card .ant-empty-description {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.price-area > .ant-empty {
+  padding: 48px;
+  animation: fadeIn 0.4s ease;
+}
+
+.price-area .ant-spin-spinning {
+  display: flex;
+  justify-content: center;
+  padding: 48px 0;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 992px) {
+  .view-tab-bar {
+    display: block;
+  }
+  .data-row-desktop {
+    display: none;
+  }
+  .data-row-mobile {
+    display: block;
+  }
+}
+
+@media (max-width: 768px) {
+  .region-segmented .ant-segmented-item-label {
+    font-size: 12px;
+    padding: 4px 10px;
+    min-height: 30px;
+    gap: 3px;
+  }
+  .region-segmented {
+    border-radius: 12px !important;
+    padding: 3px;
+  }
+  .price-header {
+    padding: 0 4px;
+  }
+  .price-header .ant-typography {
+    font-size: 18px !important;
+  }
+  .data-card .ant-card-body {
+    padding: 8px 8px 8px;
+  }
+  .data-card .ant-table {
+    font-size: 13px;
+  }
+  .so-value {
+    font-size: 15px;
+  }
+  .so-label {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .region-segmented .ant-segmented-item-label {
+    font-size: 11px;
+    padding: 3px 7px;
+    min-height: 28px;
+    gap: 2px;
+  }
+  .region-segmented .ant-segmented-item {
+    padding: 0 2px;
+  }
+}

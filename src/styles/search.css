@@ -1,0 +1,258 @@
+/* ===== 搜索卡片 ===== */
+.search-card {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  width: 100%;
+  max-width: 660px;
+  border-radius: 20px !important;
+  background: var(--bg-card) !important;
+  box-shadow: var(--shadow-md);
+  transition: all 0.5s cubic-bezier(0.22, 0.61, 0.36, 1);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-light) !important;
+}
+
+.app-container:not(.searched) .search-card {
+  max-width: 580px;
+  border-radius: 24px !important;
+  box-shadow: var(--shadow-xl);
+}
+
+.app-container.searched .search-card {
+  max-width: 660px;
+  border-radius: 0 0 20px 20px !important;
+  box-shadow: var(--shadow-lg);
+}
+
+.search-card .ant-card-body {
+  display: flex;
+  justify-content: center;
+  padding: 20px 20px 16px;
+}
+
+.app-container.searched .search-card .ant-card-body {
+  padding: 14px 22px 12px;
+}
+
+/* 输入框 */
+.search-input.ant-input-affix-wrapper {
+  border-radius: 12px 0 0 12px !important;
+  transition: all 0.25s ease;
+}
+.search-input.ant-input-affix-wrapper:focus-within {
+  box-shadow: 0 0 0 3px var(--accent-bg) !important;
+}
+.search-card .ant-btn-primary {
+  border-radius: 0 12px 12px 0 !important;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* ===== 搜索结果列表 ===== */
+.search-results {
+  margin-top: 8px;
+  animation: fadeInUp 0.3s ease;
+}
+
+.search-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  padding: 16px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.search-empty {
+  text-align: center;
+  padding: 16px;
+}
+
+.result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  padding: 4px;
+}
+
+.result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  position: relative;
+}
+
+.result-item:hover {
+  background: var(--accent-bg);
+}
+
+.result-item.active {
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+}
+
+.result-name {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.result-arrow {
+  font-size: 14px;
+  color: var(--text-secondary);
+  opacity: 0;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+.result-item:hover .result-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+}
+
+/* ===== 搜索历史 ===== */
+.search-history {
+  margin-top: 12px;
+  width: 100%;
+  max-width: 660px;
+  animation: fadeInUp 0.35s ease;
+}
+
+.search-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.search-history-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.history-clear-btn.ant-btn-text {
+  color: var(--text-secondary) !important;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+.history-clear-btn.ant-btn-text:hover {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+}
+
+.search-history-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: calc(2 * (30px + 6px));
+  overflow-y: auto;
+}
+
+.search-history-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px 4px 12px;
+  border-radius: 20px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.search-history-item:hover {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+
+.search-history-name {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.search-history-item.pinned {
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.search-history-item.pinned .search-history-name {
+  font-weight: 600;
+}
+
+.history-pin-btn.ant-btn-text {
+  color: var(--text-secondary) !important;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.history-pin-btn.ant-btn-text:hover {
+  color: var(--accent) !important;
+  background: var(--accent-bg) !important;
+}
+
+.search-history-item.pinned .history-pin-btn.ant-btn-text {
+  color: var(--accent) !important;
+}
+
+.history-del-btn.ant-btn-text {
+  color: var(--text-secondary) !important;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.history-del-btn.ant-btn-text:hover {
+  color: #ef4444 !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+/* ===== 响应式 ===== */
+@media (max-width: 768px) {
+  .app-container:not(.searched) .search-card {
+    max-width: 100%;
+    border-radius: 20px !important;
+  }
+  .app-container.searched .search-card {
+    max-width: 100%;
+    border-radius: 0 0 16px 16px !important;
+  }
+  .search-card .ant-card-body {
+    padding: 14px 12px 10px;
+  }
+  .result-item {
+    padding: 6px 10px;
+  }
+  .result-name {
+    font-size: 13px;
+  }
+}
