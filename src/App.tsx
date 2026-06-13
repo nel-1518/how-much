@@ -136,6 +136,8 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
           onViewTabChange={searchHooks.setViewTab}
           onWiki={searchHooks.handleWiki}
           transactionStore={transactionStore}
+          customItems={customItems}
+          onCustomItemsChange={handleCustomItemsChange}
         />
       )}
 

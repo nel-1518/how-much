@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { Typography, Spin, Segmented, Row, Col, Card, Table, Empty, Button, Tooltip, Tag, message } from "antd";
-import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
-import type { ItemResult, UniversalisResponse, TransactionStore } from "../types";
+import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, CopyOutlined, LinkOutlined, PlusOutlined, CheckOutlined } from "@ant-design/icons";
+import type { ItemResult, UniversalisResponse, TransactionStore, CustomItemStore } from "../types";
 import { listingColumns, historyColumns } from "../columns";
 import { REGION_KEY } from "../constants";
 import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
@@ -19,13 +19,15 @@ interface PriceSectionProps {
   onViewTabChange: (v: string) => void;
   onWiki: (name: string) => void;
   transactionStore: TransactionStore;
+  customItems: CustomItemStore;
+  onCustomItemsChange: (items: CustomItemStore) => void;
 }
 
 /** 查价结果展示组件：物品信息、出售列表、交易历史、购买建议 */
 export function PriceSection({
   selectedItem, region, onRegionChange, priceData, priceLoading,
   fetchPriceData, refreshPrice, viewTab, onViewTabChange, onWiki,
-  transactionStore,
+  transactionStore, customItems, onCustomItemsChange,
 }: PriceSectionProps) {
   // 购买建议分析：使用 App 层已保存完成的 transactionStore
   const purchaseAdvice = useMemo(
@@ -85,6 +87,22 @@ export function PriceSection({
     }
   };
 
+  const isCustomItem = Boolean(customItems[String(selectedItem.row_id)]);
+
+  const handleAddToCustom = useCallback(() => {
+    const id = selectedItem.row_id;
+    if (customItems[String(id)]) {
+      message.info("该物品已在自定义列表中");
+      return;
+    }
+    const newItems = {
+      ...customItems,
+      [id]: { name: selectedItem.fields.Name, itemId: id, addedTime: Date.now() },
+    };
+    onCustomItemsChange(newItems);
+    message.success(`「${selectedItem.fields.Name}」已添加至自定义物品`);
+  }, [customItems, onCustomItemsChange, selectedItem]);
+
   return (
     <div className="price-area">
       <div className="price-header">
@@ -99,6 +117,17 @@ export function PriceSection({
             </Typography.Title>
           </div>
           <div className="item-tags">
+            <Tooltip title={isCustomItem ? "已在自定义列表中" : "添加到自定义物品"}>
+              <Tag
+                color={isCustomItem ? "green" : "cyan"}
+                variant={isCustomItem ? "filled" : "outlined"}
+                className="info-tag"
+                onClick={handleAddToCustom}
+                style={{ cursor: "pointer", userSelect: "none" }}
+              >
+                {isCustomItem ? <CheckOutlined /> : <PlusOutlined />}
+              </Tag>
+            </Tooltip>
             <Tag
               color="blue"
               variant="outlined"
@@ -126,6 +155,7 @@ export function PriceSection({
             >
               <LinkOutlined /> Wiki
             </Tag>
+
           </div>
         </div>
         <Segmented
