@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { Typography, Spin, Segmented, Row, Col, Card, Table, Empty, Button, Tooltip } from "antd";
-import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, BarChartOutlined } from "@ant-design/icons";
+import { Typography, Spin, Segmented, Row, Col, Card, Table, Empty, Button, Tooltip, Tag, message } from "antd";
+import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, BarChartOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
 import type { PriceStats } from "../utils/computeStats";
 import { computeStats } from "../utils/computeStats";
@@ -71,20 +71,57 @@ export function PriceSection({
     </Card>
   );
 
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      message.success(`${label} 已复制`);
+    } catch {
+      message.error("复制失败");
+    }
+  };
+
   return (
     <div className="price-area">
       <div className="price-header">
-        <div
-          className="item-name-clickable"
-          onClick={() => onWiki(selectedItem.fields.Name)}
-          title="点击查看 WIKI"
-        >
-          <Typography.Title level={3} style={{ margin: 0 }}>
-            {selectedItem.fields.Name}
-          </Typography.Title>
-          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-            ID: {selectedItem.row_id}
-          </Typography.Text>
+        <div className="item-info-group">
+          <div
+            className="item-name-clickable"
+            onClick={() => copyToClipboard(selectedItem.fields.Name, "物品名")}
+            title="点击复制物品名"
+          >
+            <Typography.Title level={3} style={{ margin: 0 }}>
+              {selectedItem.fields.Name}
+            </Typography.Title>
+          </div>
+          <div className="item-tags">
+            <Tag
+              color="blue"
+              variant="outlined"
+              className="info-tag"
+              onClick={() => copyToClipboard(String(selectedItem.row_id), "物品 ID")}
+              title="点击复制物品 ID"
+            >
+              <CopyOutlined /> ID: {selectedItem.row_id}
+            </Tag>
+            <Tag
+              color="volcano"
+              variant="outlined"
+              className="info-tag"
+              onClick={() => window.open(`https://universalis.app/market/${selectedItem.row_id}`, "_blank")}
+              title="在 Universalis 上查看"
+            >
+              <LinkOutlined /> Universalis
+            </Tag>
+            <Tag
+              color="purple"
+              variant="outlined"
+              className="info-tag"
+              onClick={() => onWiki(selectedItem.fields.Name)}
+              title="在 Wiki 上查看"
+            >
+              <LinkOutlined /> Wiki
+            </Tag>
+          </div>
         </div>
         <Segmented
           value={region} onChange={(v) => handleRegionChange(v as string)}

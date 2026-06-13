@@ -5,7 +5,7 @@ import { REGION_MAP } from "../constants";
 
 /**
  * Universalis 查价 Hook
- * 带内存缓存，支持普通查询（50 条）和强制刷新（100 条）
+ * 带内存缓存，支持普通查询（50 条）和强制刷新（50 条）
  */
 export function usePriceQuery() {
   const [priceData, setPriceData] = useState<UniversalisResponse | null>(null);
@@ -34,8 +34,8 @@ export function usePriceQuery() {
     priceData,
     priceLoading,
     setPriceData,
-    fetchPriceData: useCallback((id: number, region: string) => doFetch(id, region, 50, false), [doFetch]),
-    refreshPrice:  useCallback((id: number, region: string) => doFetch(id, region, 100, true), [doFetch]),
+    fetchPriceData: useCallback((id: number, region: string) => doFetch(id, region, 30, false), [doFetch]),
+    refreshPrice:  useCallback((id: number, region: string) => doFetch(id, region, 90, true), [doFetch]),
     clearPrice:    useCallback(() => { cache.current.clear(); setPriceData(null); }, []),
   };
 }
