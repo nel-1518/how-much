@@ -236,6 +236,19 @@
   background: rgba(239, 68, 68, 0.1) !important;
 }
 
+/* 记录开关 */
+.history-record-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 2px;
+}
+.history-record-switch {
+  margin-right: 4px;
+}
+
 /* ===== 响应式 ===== */
 @media (max-width: 768px) {
   .app-container:not(.searched) .search-card {

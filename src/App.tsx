@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { REGION_KEY, DEFAULT_REGION } from "./constants";
 import { useSearchHistory } from "./hooks/useSearchHistory";
 import { usePriceQuery } from "./hooks/usePriceQuery";
@@ -7,10 +7,25 @@ import { HeroSection } from "./components/HeroSection";
 import { SearchSection } from "./components/SearchSection";
 import { HistorySection } from "./components/HistorySection";
 import { PriceSection } from "./components/PriceSection";
+import {
+  loadRecordingEnabled,
+  saveRecordingEnabled,
+  loadTransactionRecords,
+  saveTransactionRecords,
+  mergeTransactionRecords,
+  cleanExpiredTransactionRecords,
+  clearTransactionRecords,
+} from "./history";
+import type { TransactionStore } from "./types";
 import "./App.css";
 
 function App() {
   const [region, setRegion] = useState(() => localStorage.getItem(REGION_KEY) || DEFAULT_REGION);
+  const [recordingEnabled, setRecordingEnabled] = useState(loadRecordingEnabled);
+  const [transactionStore, setTransactionStore] = useState<TransactionStore>(() => {
+    cleanExpiredTransactionRecords();
+    return loadTransactionRecords();
+  });
 
   const historyHooks = useSearchHistory();
   const priceHooks = usePriceQuery();
@@ -20,6 +35,33 @@ function App() {
     addToHistory: historyHooks.addToHistory,
     clearPrice: priceHooks.clearPrice,
   });
+
+  // 获取到新的价格数据后，保存交易历史到本地（带自动去重）
+  useEffect(() => {
+    if (!recordingEnabled) return;
+    if (!priceHooks.priceData?.recentHistory?.length) return;
+    const itemId = priceHooks.priceData.itemID;
+    if (itemId == null) return;
+
+    const store = loadTransactionRecords();
+    const newStore = mergeTransactionRecords(
+      store,
+      itemId,
+      searchHooks.selectedItem?.fields.Name || `物品 #${itemId}`,
+      priceHooks.priceData.recentHistory,
+    );
+    saveTransactionRecords(newStore);
+    setTransactionStore(newStore);
+  }, [priceHooks.priceData, recordingEnabled, searchHooks.selectedItem]);
+
+  const handleRecordingToggle = useCallback((enabled: boolean) => {
+    setRecordingEnabled(enabled);
+    saveRecordingEnabled(enabled);
+    if (!enabled) {
+      clearTransactionRecords();
+      setTransactionStore({});
+    }
+  }, []);
 
   const handleFocus = useCallback(() => {
     if (searchHooks.results.length > 0) searchHooks.setShowResults(true);
@@ -50,6 +92,8 @@ function App() {
         onRemoveHistory={historyHooks.removeHistory}
         onClearHistory={historyHooks.clearHistory}
         onTogglePin={historyHooks.togglePin}
+        recordingEnabled={recordingEnabled}
+        onRecordingToggle={handleRecordingToggle}
       />
 
       {searchHooks.selectedItem && (
@@ -65,6 +109,7 @@ function App() {
           onViewTabChange={searchHooks.setViewTab}
           onWiki={searchHooks.handleWiki}
           isPureIdSearch={searchHooks.isPureIdSearch}
+          transactionStore={transactionStore}
         />
       )}
     </div>

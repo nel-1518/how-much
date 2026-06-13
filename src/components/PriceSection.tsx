@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 import { Typography, Spin, Segmented, Row, Col, Card, Table, Empty, Button, Tooltip, Tag, message } from "antd";
-import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, BarChartOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
-import type { ItemResult, UniversalisResponse } from "../types";
-import type { PriceStats } from "../utils/computeStats";
-import { computeStats } from "../utils/computeStats";
-import { fmtPrice } from "../utils/formatPrice";
+import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
+import type { ItemResult, UniversalisResponse, TransactionStore } from "../types";
 import { listingColumns, historyColumns } from "../columns";
 import { REGION_KEY } from "../constants";
+import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
+import { PurchaseAdvice } from "./PurchaseAdvice";
 
 interface PriceSectionProps {
   selectedItem: ItemResult;
@@ -20,15 +19,20 @@ interface PriceSectionProps {
   onViewTabChange: (v: string) => void;
   onWiki: (name: string) => void;
   isPureIdSearch?: boolean;
+  transactionStore: TransactionStore;
 }
 
-/** 查价结果展示组件：物品信息、出售列表、交易历史、行情概览 */
+/** 查价结果展示组件：物品信息、出售列表、交易历史、购买建议 */
 export function PriceSection({
   selectedItem, region, onRegionChange, priceData, priceLoading,
   fetchPriceData, refreshPrice, viewTab, onViewTabChange, onWiki,
-  isPureIdSearch = false,
+  isPureIdSearch = false, transactionStore,
 }: PriceSectionProps) {
-  const stats: PriceStats = useMemo(() => computeStats(priceData), [priceData]);
+  // 购买建议分析：使用 App 层已保存完成的 transactionStore
+  const purchaseAdvice = useMemo(
+    () => analyzePurchaseAdvice(transactionStore, selectedItem.row_id, priceData),
+    [transactionStore, selectedItem.row_id, priceData],
+  );
 
   const handleRegionChange = (val: string) => {
     onRegionChange(val);
@@ -167,38 +171,8 @@ export function PriceSection({
               {viewTab === "history" && historyCard()}
             </div>
 
-            {/* 行情概览 */}
-            {stats.listingCount > 0 && (
-              <Card title={<><BarChartOutlined /> 行情概览</>} size="small" className="stats-overview-card">
-                <Row gutter={[16, 12]}>
-                  <Col xs={12} sm={8} md={6}>
-                    <div className="so-item"><div className="so-label">最低单价</div>
-                      <div className="so-value so-low">{fmtPrice(stats.lowestPrice)}</div>
-                    </div>
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <Tooltip title={`原始均价：${stats.avgPrice.toLocaleString()} Gil（含极端值）`}>
-                      <div className="so-item">
-                        <div className="so-label">截尾均价<span className="so-label-hint"> 10%</span></div>
-                        <div className="so-value">{fmtPrice(stats.trimmedMeanPrice)}</div>
-                      </div>
-                    </Tooltip>
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <div className="so-item"><div className="so-label">中位数单价</div>
-                      <div className="so-value">{fmtPrice(stats.medianPrice)}</div>
-                    </div>
-                  </Col>
-                  <Col xs={12} sm={8} md={6}>
-                    <div className="so-item"><div className="so-label">近期成交均价</div>
-                      <div className="so-value">
-                        {stats.recentAvgPrice > 0 ? fmtPrice(stats.recentAvgPrice) : <span className="so-na">暂无</span>}
-                      </div>
-                    </div>
-                  </Col>
-                </Row>
-              </Card>
-            )}
+            {/* 购买建议 */}
+            <PurchaseAdvice result={purchaseAdvice} />
           </>
         ) : (!priceLoading && <Empty description="暂无数据" />)}
       </Spin>

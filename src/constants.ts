@@ -58,6 +58,10 @@ export const HISTORY_KEY = "ff14_search_history";
 export const HISTORY_PINNED_KEY = "ff14_search_history_pinned";
 export const MAX_HISTORY = 20;
 
+// 交易记录本地存储
+export const TRANSACTION_RECORDS_KEY = "ff14_transaction_records";
+export const RECORDING_ENABLED_KEY = "ff14_recording_enabled";
+
 // 上次选中大区
 export const REGION_KEY = "ff14_last_region";
 export const DEFAULT_REGION = "中国";
