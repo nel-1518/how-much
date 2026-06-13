@@ -64,6 +64,7 @@ function App() {
           viewTab={searchHooks.viewTab}
           onViewTabChange={searchHooks.setViewTab}
           onWiki={searchHooks.handleWiki}
+          isPureIdSearch={searchHooks.isPureIdSearch}
         />
       )}
     </div>

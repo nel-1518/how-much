@@ -28,10 +28,30 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
   const [showResults, setShowResults] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ItemResult | null>(null);
   const [viewTab, setViewTab] = useState<string>("listings");
+  const [isPureIdSearch, setIsPureIdSearch] = useState(false);
 
   const doSearch = useCallback(async (query: string) => {
     const trimmed = query.trim();
     if (!trimmed) { message.warning("请输入搜索内容"); return; }
+
+    // 如果输入纯数字，直接作为物品 ID 查价，无需请求名称 API
+    if (/^\d+$/.test(trimmed)) {
+      const id = Number(trimmed);
+      const name = `物品 #${id}`;
+      setIsPureIdSearch(true);
+      setKeyword(name);
+      setHasSearched(true);
+      setShowResults(false);
+      setSelectedItem(null);
+      setResults([]);
+      const item: ItemResult = { row_id: id, fields: { Name: name, Singular: name }, score: 100, sheet: "Item" };
+      setSelectedItem(item);
+      setViewTab("listings");
+      fetchPriceData(id, region);
+      return;
+    }
+    setIsPureIdSearch(false);
+
     setLoading(true);
     setHasSearched(true);
     setShowResults(true);
@@ -48,9 +68,10 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     } finally {
       setLoading(false);
     }
-  }, [clearPrice]);
+  }, [clearPrice, region, fetchPriceData]);
 
   const handleSelectItem = useCallback((item: ItemResult) => {
+    setIsPureIdSearch(false);
     setKeyword(item.fields.Name);
     setShowResults(false);
     setSelectedItem(item);
@@ -60,6 +81,7 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
   }, [region, fetchPriceData, addToHistory]);
 
   const searchFromHistory = useCallback((item: SearchHistoryItem) => {
+    setIsPureIdSearch(false);
     setKeyword(item.name);
     setHasSearched(true);
     setShowResults(true);
@@ -90,6 +112,7 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     const c = clean(value);
     setKeyword(c);
     if (!c.trim()) { setShowResults(false); setResults([]); }
+    setIsPureIdSearch(false);
   }, []);
 
   const handlePasteSearch = useCallback(async () => {
@@ -111,6 +134,7 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     showResults, setShowResults,
     selectedItem, setSelectedItem,
     viewTab, setViewTab,
+    isPureIdSearch,
     doSearch,
     handleSelectItem,
     searchFromHistory,

@@ -19,12 +19,14 @@ interface PriceSectionProps {
   viewTab: string;
   onViewTabChange: (v: string) => void;
   onWiki: (name: string) => void;
+  isPureIdSearch?: boolean;
 }
 
 /** 查价结果展示组件：物品信息、出售列表、交易历史、行情概览 */
 export function PriceSection({
   selectedItem, region, onRegionChange, priceData, priceLoading,
   fetchPriceData, refreshPrice, viewTab, onViewTabChange, onWiki,
+  isPureIdSearch = false,
 }: PriceSectionProps) {
   const stats: PriceStats = useMemo(() => computeStats(priceData), [priceData]);
 
@@ -112,15 +114,17 @@ export function PriceSection({
             >
               <LinkOutlined /> Universalis
             </Tag>
-            <Tag
-              color="purple"
-              variant="outlined"
-              className="info-tag"
-              onClick={() => onWiki(selectedItem.fields.Name)}
-              title="在 Wiki 上查看"
-            >
-              <LinkOutlined /> Wiki
-            </Tag>
+            {!isPureIdSearch && (
+              <Tag
+                color="purple"
+                variant="outlined"
+                className="info-tag"
+                onClick={() => onWiki(selectedItem.fields.Name)}
+                title="在 Wiki 上查看"
+              >
+                <LinkOutlined /> Wiki
+              </Tag>
+            )}
           </div>
         </div>
         <Segmented
