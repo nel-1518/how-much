@@ -5,12 +5,6 @@ import zhCN from "antd/locale/zh_CN";
 import { THEME_KEY } from "./constants.ts";
 import type { ThemeMode } from "./constants.ts";
 
-// 从 CSS 变量读取颜色，保持 index.css 为唯一数据源
-function cssVar(name: string, fallback = ""): string {
-  if (typeof document === "undefined") return fallback;
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
-}
-
 /** 读取 localStorage 中的主题模式 */
 function loadThemeMode(): ThemeMode {
   try {
@@ -58,24 +52,27 @@ const AppWrapper: React.FC = () => {
     try { localStorage.setItem(THEME_KEY, mode); } catch { /* ignore */ }
   }, []);
 
-  // 读取 CSS 变量（数据源：index.css），暗色/亮色自动跟随
+  // 直接根据 isDark 计算 Ant Design token，避免 useMemo 在渲染阶段
+  // 读取 DOM CSS 变量时的时机问题（此时 data-theme 尚未更新）
   const token = useMemo(() => ({
-    colorPrimary: cssVar("--accent", "#8b5cf6"),
-    colorSuccess: cssVar("--ant-color-success", "#22c55e"),
-    colorWarning: cssVar("--ant-color-warning", "#f59e0b"),
-    colorError: cssVar("--ant-color-error", "#ef4444"),
-    colorInfo: cssVar("--ant-color-info", "#3b82f6"),
-    colorText: cssVar("--text", "#4a4458"),
-    colorBgContainer: cssVar("--bg-card", "#ffffff"),
-    colorBorder: cssVar("--border", "#e8e4dd"),
-    boxShadow: cssVar("--ant-box-shadow", "0 4px 16px rgba(0,0,0,0.06)"),
+    colorPrimary: isDark ? "#a78bfa" : "#8b5cf6",
+    colorSuccess: isDark ? "#4ade80" : "#22c55e",
+    colorWarning: isDark ? "#fbbf24" : "#f59e0b",
+    colorError: isDark ? "#f87171" : "#ef4444",
+    colorInfo: isDark ? "#60a5fa" : "#3b82f6",
+    colorText: isDark ? "#b0aeb8" : "#4a4458",
+    colorBgContainer: isDark ? "#1c1a22" : "#ffffff",
+    colorBorder: isDark ? "#2d2a35" : "#e8e4dd",
+    boxShadow: isDark
+      ? "0 4px 16px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.2)"
+      : "0 4px 16px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04)",
     borderRadius: 10,
     borderRadiusLG: 14,
     borderRadiusSM: 8,
     fontFamily: "Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
     fontSize: 15,
     controlHeight: 38,
-  }), []);
+  }), [isDark]);
 
   return (
     <ConfigProvider
