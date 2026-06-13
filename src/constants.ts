@@ -65,3 +65,7 @@ export const RECORDING_ENABLED_KEY = "ff14_recording_enabled";
 // 上次选中大区
 export const REGION_KEY = "ff14_last_region";
 export const DEFAULT_REGION = "中国";
+
+// 主题设置
+export const THEME_KEY = "ff14_theme_mode";
+export type ThemeMode = "auto" | "light" | "dark";

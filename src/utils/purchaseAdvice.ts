@@ -182,6 +182,9 @@ export function analyzePurchaseAdvice(
 ): PurchaseAdviceResult {
   const entry = store[String(itemId)];
   const localRecords: UniversalisHistory[] = entry?.records || [];
+  // 本地无记录时，用当前 API 返回的交易历史作为替代
+  const fallbackRecords = priceData?.recentHistory || [];
+  const records: UniversalisHistory[] = localRecords.length > 0 ? localRecords : fallbackRecords;
   const currentListings = priceData?.listings || [];
 
   // 无足够数据
@@ -215,8 +218,8 @@ export function analyzePurchaseAdvice(
   const currentLowestPrice = Math.min(...currentListings.map((l) => l.pricePerUnit));
   const effectiveBuyPrice = currentLowestPrice * (1 + TAX_RATE);
 
-  // === 历史数据分析（来自本地存储）===
-  const prices = localRecords.map((r) => r.pricePerUnit);
+  // === 历史数据分析（本地存储优先，无则用 API 返回的）===
+  const prices = records.map((r) => r.pricePerUnit);
   const sorted = [...prices].sort((a, b) => a - b);
   const len = sorted.length;
 
@@ -224,7 +227,7 @@ export function analyzePurchaseAdvice(
   const historicalHighestPrice = len > 0 ? sorted[len - 1] : 0;
   // 找出历史最低价的那笔交易
   const lowestPriceRecord = len > 0
-    ? localRecords.find((r) => r.pricePerUnit === sorted[0])
+    ? records.find((r) => r.pricePerUnit === sorted[0])
     : undefined;
 
   // 百分位
@@ -236,7 +239,7 @@ export function analyzePurchaseAdvice(
   const weightedRefPrice = lowPriceWeightedMean(sorted);
 
   // EWMA 指数加权均价
-  const ewmaPrice = len > 0 ? ewma(localRecords, 7) : 0;
+  const ewmaPrice = len > 0 ? ewma(records, 7) : 0;
 
   // 波动率
   const avgPrice = len > 0 ? prices.reduce((s, p) => s + p, 0) / len : 0;
@@ -245,11 +248,11 @@ export function analyzePurchaseAdvice(
 
   // 近 7 天成交笔数
   const oneWeekAgo = Date.now() / 1000 - 7 * 24 * 60 * 60;
-  const recentWeekRecords = localRecords.filter((r) => r.timestamp >= oneWeekAgo);
+  const recentWeekRecords = records.filter((r) => r.timestamp >= oneWeekAgo);
   const recentWeekCount = recentWeekRecords.length;
 
   // 价格趋势
-  const trend = detectTrend(localRecords, sorted);
+  const trend = detectTrend(records, sorted);
 
   // 主流成交价位带（只需 bandLo 判断是否低于主流价）
   const [bandLo] = priceDensityBand(sorted);

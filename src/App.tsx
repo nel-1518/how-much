@@ -1,5 +1,8 @@
 import { useState, useCallback, useEffect } from "react";
+import { Button, Tooltip } from "antd";
+import { SettingOutlined } from "@ant-design/icons";
 import { REGION_KEY, DEFAULT_REGION } from "./constants";
+import type { ThemeMode } from "./constants";
 import { useSearchHistory } from "./hooks/useSearchHistory";
 import { usePriceQuery } from "./hooks/usePriceQuery";
 import { useItemSearch } from "./hooks/useItemSearch";
@@ -7,6 +10,7 @@ import { HeroSection } from "./components/HeroSection";
 import { SearchSection } from "./components/SearchSection";
 import { HistorySection } from "./components/HistorySection";
 import { PriceSection } from "./components/PriceSection";
+import { SettingsPanel } from "./components/SettingsPanel";
 import {
   loadRecordingEnabled,
   saveRecordingEnabled,
@@ -19,13 +23,19 @@ import {
 import type { TransactionStore } from "./types";
 import "./App.css";
 
-function App() {
+interface AppProps {
+  themeMode: ThemeMode;
+  onThemeModeChange: (mode: ThemeMode) => void;
+}
+
+function App({ themeMode, onThemeModeChange }: AppProps) {
   const [region, setRegion] = useState(() => localStorage.getItem(REGION_KEY) || DEFAULT_REGION);
   const [recordingEnabled, setRecordingEnabled] = useState(loadRecordingEnabled);
   const [transactionStore, setTransactionStore] = useState<TransactionStore>(() => {
     cleanExpiredTransactionRecords();
     return loadTransactionRecords();
   });
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const historyHooks = useSearchHistory();
   const priceHooks = usePriceQuery();
@@ -69,6 +79,16 @@ function App() {
 
   return (
     <div className={`app-container ${searchHooks.hasSearched ? "searched" : ""}`}>
+      {/* 设置入口 — 固定在右上角 */}
+      <Tooltip title="设置">
+        <Button
+          type="text"
+          className="settings-trigger"
+          icon={<SettingOutlined />}
+          onClick={() => setSettingsOpen(true)}
+        />
+      </Tooltip>
+
       {!searchHooks.hasSearched && <HeroSection />}
 
       <SearchSection
@@ -92,8 +112,6 @@ function App() {
         onRemoveHistory={historyHooks.removeHistory}
         onClearHistory={historyHooks.clearHistory}
         onTogglePin={historyHooks.togglePin}
-        recordingEnabled={recordingEnabled}
-        onRecordingToggle={handleRecordingToggle}
       />
 
       {searchHooks.selectedItem && (
@@ -112,6 +130,16 @@ function App() {
           transactionStore={transactionStore}
         />
       )}
+
+      {/* 设置面板 Drawer */}
+      <SettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        themeMode={themeMode}
+        onThemeModeChange={onThemeModeChange}
+        recordingEnabled={recordingEnabled}
+        onRecordingToggle={handleRecordingToggle}
+      />
     </div>
   );
 }
