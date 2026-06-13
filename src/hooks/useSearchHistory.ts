@@ -21,6 +21,10 @@ export function useSearchHistory() {
   /** 将物品添加到普通历史最前方，超出上限则截断 */
   const addToHistory = useCallback((id: number, name: string) => {
     setHistory((prev) => {
+      // 如果物品已固定，不重复添加到普通历史
+      if (prev.pinned.some((h) => h.id === id)) {
+        return prev;
+      }
       const filtered = prev.normal.filter((h) => h.id !== id);
       const next = [{ id, name, time: Date.now() }, ...filtered];
       const maxNormal = Math.max(0, MAX_HISTORY - prev.pinned.length);
