@@ -19,8 +19,10 @@ import {
   mergeTransactionRecords,
   cleanExpiredTransactionRecords,
   clearTransactionRecords,
+  loadCustomItems,
+  saveCustomItems,
 } from "./history";
-import type { TransactionStore } from "./types";
+import type { TransactionStore, CustomItemStore } from "./types";
 import "./App.css";
 
 interface AppProps {
@@ -35,6 +37,7 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
     cleanExpiredTransactionRecords();
     return loadTransactionRecords();
   });
+  const [customItems, setCustomItems] = useState<CustomItemStore>(loadCustomItems);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   const historyHooks = useSearchHistory();
@@ -44,6 +47,7 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
     fetchPriceData: priceHooks.fetchPriceData,
     addToHistory: historyHooks.addToHistory,
     clearPrice: priceHooks.clearPrice,
+    customItems,
   });
 
   // 获取到新的价格数据后，保存交易历史到本地（带自动去重）
@@ -71,6 +75,11 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
       clearTransactionRecords();
       setTransactionStore({});
     }
+  }, []);
+
+  const handleCustomItemsChange = useCallback((items: CustomItemStore) => {
+    setCustomItems(items);
+    saveCustomItems(items);
   }, []);
 
   const handleFocus = useCallback(() => {
@@ -126,7 +135,6 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
           viewTab={searchHooks.viewTab}
           onViewTabChange={searchHooks.setViewTab}
           onWiki={searchHooks.handleWiki}
-          isPureIdSearch={searchHooks.isPureIdSearch}
           transactionStore={transactionStore}
         />
       )}
@@ -139,6 +147,8 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
         onThemeModeChange={onThemeModeChange}
         recordingEnabled={recordingEnabled}
         onRecordingToggle={handleRecordingToggle}
+        customItems={customItems}
+        onCustomItemsChange={handleCustomItemsChange}
       />
     </div>
   );

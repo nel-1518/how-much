@@ -69,3 +69,6 @@ export const DEFAULT_REGION = "中国";
 // 主题设置
 export const THEME_KEY = "ff14_theme_mode";
 export type ThemeMode = "auto" | "light" | "dark";
+
+// 自定义物品映射
+export const CUSTOM_ITEMS_KEY = "ff14_custom_items";

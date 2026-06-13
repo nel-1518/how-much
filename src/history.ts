@@ -1,5 +1,5 @@
-import type { SearchHistoryItem, UniversalisHistory, TransactionStore } from "./types";
-import { HISTORY_KEY, HISTORY_PINNED_KEY, TRANSACTION_RECORDS_KEY, RECORDING_ENABLED_KEY } from "./constants";
+import type { SearchHistoryItem, UniversalisHistory, TransactionStore, CustomItem, CustomItemStore } from "./types";
+import { HISTORY_KEY, HISTORY_PINNED_KEY, TRANSACTION_RECORDS_KEY, RECORDING_ENABLED_KEY, CUSTOM_ITEMS_KEY } from "./constants";
 
 function loadFromKey<T>(key: string, fallback: T): T {
   try {
@@ -106,4 +106,37 @@ export function loadRecordingEnabled(): boolean {
 /** 保存记录开关状态 */
 export function saveRecordingEnabled(enabled: boolean) {
   localStorage.setItem(RECORDING_ENABLED_KEY, String(enabled));
+}
+
+// ---- 自定义物品管理 ----
+
+/** 加载所有自定义物品映射 */
+export function loadCustomItems(): CustomItemStore {
+  return loadFromKey<CustomItemStore>(CUSTOM_ITEMS_KEY, {});
+}
+
+/** 保存所有自定义物品映射 */
+export function saveCustomItems(store: CustomItemStore) {
+  saveToKey(CUSTOM_ITEMS_KEY, store);
+}
+
+/** 添加一个自定义物品 */
+export function addCustomItem(store: CustomItemStore, item: CustomItem): CustomItemStore {
+  const key = `${item.itemId}`;
+  return {
+    ...store,
+    [key]: {
+      name: item.name,
+      itemId: item.itemId,
+      addedTime: Date.now(),
+    },
+  };
+}
+
+/** 删除一个自定义物品 */
+export function removeCustomItem(store: CustomItemStore, itemId: number): CustomItemStore {
+  const key = `${itemId}`;
+  const newStore = { ...store };
+  delete newStore[key];
+  return newStore;
 }

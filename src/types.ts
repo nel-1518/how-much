@@ -58,3 +58,14 @@ export interface TransactionStore {
     records: UniversalisHistory[];
   };
 }
+
+// ---- 自定义物品映射 ----
+export interface CustomItem {
+  name: string;
+  itemId: number;
+  addedTime: number;
+}
+
+export interface CustomItemStore {
+  [key: string]: CustomItem;
+}

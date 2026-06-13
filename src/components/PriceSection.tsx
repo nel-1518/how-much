@@ -18,7 +18,6 @@ interface PriceSectionProps {
   viewTab: string;
   onViewTabChange: (v: string) => void;
   onWiki: (name: string) => void;
-  isPureIdSearch?: boolean;
   transactionStore: TransactionStore;
 }
 
@@ -26,7 +25,7 @@ interface PriceSectionProps {
 export function PriceSection({
   selectedItem, region, onRegionChange, priceData, priceLoading,
   fetchPriceData, refreshPrice, viewTab, onViewTabChange, onWiki,
-  isPureIdSearch = false, transactionStore,
+  transactionStore,
 }: PriceSectionProps) {
   // 购买建议分析：使用 App 层已保存完成的 transactionStore
   const purchaseAdvice = useMemo(
@@ -118,17 +117,15 @@ export function PriceSection({
             >
               <LinkOutlined /> Universalis
             </Tag>
-            {!isPureIdSearch && (
-              <Tag
-                color="purple"
-                variant="outlined"
-                className="info-tag"
-                onClick={() => onWiki(selectedItem.fields.Name)}
-                title="在 Wiki 上查看"
-              >
-                <LinkOutlined /> Wiki
-              </Tag>
-            )}
+            <Tag
+              color="purple"
+              variant="outlined"
+              className="info-tag"
+              onClick={() => onWiki(selectedItem.fields.Name)}
+              title="在 Wiki 上查看"
+            >
+              <LinkOutlined /> Wiki
+            </Tag>
           </div>
         </div>
         <Segmented
