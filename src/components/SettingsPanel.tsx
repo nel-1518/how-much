@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Drawer, Segmented, Switch, Space, Typography, Divider, Tooltip, Modal, Button } from "antd";
 import {
   SettingOutlined,
@@ -10,7 +10,8 @@ import {
   AppstoreAddOutlined,
 } from "@ant-design/icons";
 import type { ThemeMode } from "../constants";
-import type { CustomItemStore } from "../types";
+import { TRANSACTION_RECORDS_KEY } from "../constants";
+import type { CustomItemStore, TransactionStore } from "../types";
 import { CustomItemModal } from "./CustomItemModal";
 
 interface SettingsPanelProps {
@@ -36,6 +37,24 @@ export function SettingsPanel({
   onCustomItemsChange,
 }: SettingsPanelProps) {
   const [customItemModalOpen, setCustomItemModalOpen] = useState(false);
+  const [recordCount, setRecordCount] = useState(0);
+  const [recordSize, setRecordSize] = useState(0);
+
+  useEffect(() => {
+    if (!open) return;
+    requestIdleCallback(() => {
+      const raw = localStorage.getItem(TRANSACTION_RECORDS_KEY);
+      if (!raw) { setRecordCount(0); setRecordSize(0); return; }
+      try {
+        const store = JSON.parse(raw) as TransactionStore;
+        const count = Object.values(store).reduce(
+          (sum, item) => sum + item.records.length, 0,
+        );
+        setRecordCount(count);
+        setRecordSize(new Blob([raw]).size);
+      } catch { /* ignore */ }
+    });
+  }, [open]);
 
   const handleThemeChange = useCallback(
     (val: string | number) => onThemeModeChange(val as ThemeMode),
@@ -112,7 +131,9 @@ export function SettingsPanel({
           <Space direction="vertical" size={2}>
             <Typography.Text strong>自动记录</Typography.Text>
             <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-              关闭后将清空所有交易记录
+              {recordingEnabled
+                ? `已保存 ${recordCount} 条（${formatBytes(recordSize)}）`
+                : "关闭后将清空所有交易记录"}
             </Typography.Text>
           </Space>
           <Tooltip title={recordingEnabled ? "关闭后将清空所有交易记录" : "开启后自动保存交易记录"}>
@@ -159,5 +180,14 @@ export function SettingsPanel({
       />
     </Drawer>
   );
+}
+
+/** 将字节数格式化为人类可读的字符串 */
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  const value = bytes / Math.pow(1024, i);
+  return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[i]}`;
 }
 
