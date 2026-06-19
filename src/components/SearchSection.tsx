@@ -45,6 +45,7 @@ export function SearchSection({
               onFocus={onFocus}
               prefix={<SearchOutlined />}
               allowClear
+              autoFocus
               className="search-input"
             />
             <Tooltip title="粘贴并搜索">
