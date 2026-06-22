@@ -16,35 +16,56 @@ function percentile(sorted: number[], p: number): number {
   return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
 }
 
-/** 
- * 低价加权 IQR 截尾均值
- * 先剔除 Q1 - 1.5*IQR 和 Q3 + 1.5*IQR 范围外的异常值，
- * 再对剩余的价格按「越低权重越高」加权平均 (weight = 1/price²)，压低参考价
+/**
+ * 时间衰减加权 25% 分位数参考价
+ * 1. 数据预处理：仅保留最近 72 小时交易
+ * 2. 异常值过滤：剔除左右两侧各 10% 的极端价格
+ * 3. 时间衰减加权：weight = exp(-λ × Δt)，半衰期 12 小时
+ * 4. 计算加权 25% 分位数作为参考价
  */
-function lowPriceWeightedMean(sorted: number[]): number {
-  if (sorted.length === 0) return 0;
-  if (sorted.length < 4) {
-    // 样本太少时直接用低价加权
-    const sumWeight = sorted.reduce((s, p) => s + 1 / (p * p), 0);
-    const sumWeighted = sorted.reduce((s, p) => s + p * (1 / (p * p)), 0);
-    return sumWeight > 0 ? sumWeighted / sumWeight : sorted.reduce((a, b) => a + b, 0) / sorted.length;
+function timeDecayWeightedP25(records: UniversalisHistory[]): number {
+  if (records.length === 0) return 0;
+
+  const now = Date.now() / 1000;
+  const SECONDS_72H = 72 * 60 * 60;
+  const LAMBDA = Math.LN2 / (12 * 3600); // 半衰期 12 小时
+
+  // Step 1: 仅保留最近 72 小时交易
+  const recent = records.filter((r) => now - r.timestamp <= SECONDS_72H);
+  if (recent.length < 3) return 0;
+
+  // Step 2: 按价格排序，剔除左右两侧各 10%
+  const sorted = [...recent].sort((a, b) => a.pricePerUnit - b.pricePerUnit);
+  const trimCount = Math.max(1, Math.floor(sorted.length * 0.1));
+  const trimmed = sorted.slice(trimCount, sorted.length - trimCount);
+  if (trimmed.length === 0) return 0;
+
+  // Step 3 & 4: 计算时间衰减权重，求加权 25% 分位数
+  const weighted = trimmed.map((r) => ({
+    price: r.pricePerUnit,
+    weight: Math.exp(-LAMBDA * (now - r.timestamp)),
+  }));
+
+  // 按价格升序排列（确保有序）
+  weighted.sort((a, b) => a.price - b.price);
+
+  const totalWeight = weighted.reduce((s, w) => s + w.weight, 0);
+  const targetWeight = totalWeight * 0.25;
+
+  // 线性插值找加权 P25
+  let cumWeight = 0;
+  for (let i = 0; i < weighted.length; i++) {
+    const prevCum = cumWeight;
+    cumWeight += weighted[i].weight;
+    if (cumWeight >= targetWeight) {
+      if (i === 0 || prevCum === 0) return weighted[i].price;
+      // 线性插值
+      const ratio = (targetWeight - prevCum) / (cumWeight - prevCum);
+      return weighted[i - 1].price + (weighted[i].price - weighted[i - 1].price) * ratio;
+    }
   }
-  const q1 = percentile(sorted, 25);
-  const q3 = percentile(sorted, 75);
-  const iqrVal = q3 - q1;
-  const lower = q1 - 1.5 * iqrVal;
-  const upper = q3 + 1.5 * iqrVal;
-  const filtered = sorted.filter((v) => v >= lower && v <= upper);
-  if (filtered.length === 0) {
-    // 全被剔除时回退到原始低价加权
-    const sumWeight = sorted.reduce((s, p) => s + 1 / (p * p), 0);
-    const sumWeighted = sorted.reduce((s, p) => s + p * (1 / (p * p)), 0);
-    return sumWeighted / sumWeight;
-  }
-  // 低价加权平均：权重 = 1/price²，越便宜权重越高
-  const sumWeight = filtered.reduce((s, p) => s + 1 / (p * p), 0);
-  const sumWeighted = filtered.reduce((s, p) => s + p * (1 / (p * p)), 0);
-  return sumWeighted / sumWeight;
+
+  return weighted[weighted.length - 1].price;
 }
 
 /** 标准差 */
@@ -100,7 +121,7 @@ function detectTrend(
   // 按时间正序
   const sortedByTime = [...records].sort((a, b) => a.timestamp - b.timestamp);
   const recentEwma = ewma(sortedByTime, 3);      // 近3天半衰期，捕捉近期
-  const longEwma = ewma(sortedByTime, 30);        // 近30天半衰期，反映长期
+  const longEwma = ewma(sortedByTime, 15);        // 15天半衰期，反映中期水平（历史记录最长30天）
 
   // 用变异系数判断波动是否太大，波动大时趋势不可信
   const mean = sortedPrices.reduce((a, b) => a + b, 0) / sortedPrices.length;
@@ -129,7 +150,7 @@ export interface PurchaseAdviceResult {
     currentLowestPrice: number;
     /** 含5%手续费的实付价 */
     effectiveBuyPrice: number;
-    /** 低价加权参考价（剔除异常值 + 低价加权） */
+    /** 时间衰减加权 P25 参考价（近72h + 10%双边截尾 + 时间衰减 + 加权P25） */
     weightedRefPrice: number;
     /** EWMA 指数加权均价（近期权重更高） */
     ewmaPrice: number;
@@ -235,8 +256,8 @@ export function analyzePurchaseAdvice(
   const percentile75 = percentile(sorted, 75);
   const historicalMedianPrice = percentile(sorted, 50);
 
-  // 低价加权参考价（主参考基准）
-  const weightedRefPrice = lowPriceWeightedMean(sorted);
+  // 时间衰减加权 P25 参考价（主参考基准）
+  const weightedRefPrice = timeDecayWeightedP25(records);
 
   // EWMA 指数加权均价
   const ewmaPrice = len > 0 ? ewma(records, 7) : 0;
@@ -258,7 +279,7 @@ export function analyzePurchaseAdvice(
   const [bandLo] = priceDensityBand(sorted);
 
   // === 购买建议逻辑 ===
-  // 参考价：用低价加权均值，不回退到简单平均
+  // 参考价：用时间衰减加权 P25
   const refPrice = weightedRefPrice > 0 ? weightedRefPrice : avgPrice;
   const priceRatio = refPrice > 0 ? effectiveBuyPrice / refPrice : 1;
   const savingsPercent = refPrice > 0 ? ((refPrice - effectiveBuyPrice) / refPrice) * 100 : 0;

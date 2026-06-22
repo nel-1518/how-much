@@ -146,7 +146,7 @@ export function PurchaseAdvice({ result }: PurchaseAdviceProps) {
 
         {/* 第2列：参考价 */}
         <Col xs={12} sm={8}>
-          <Tooltip title="低价加权参考价 — 剔除异常值后，越便宜的成交权重越高，反映买家实际能买到的好价格">
+          <Tooltip title="参考价 — 取近72小时交易，剔除两端10%极端值，按时间衰减加权(半衰期12h)计算25%分位数">
             <div className="pa-item">
               <div className="pa-label">
                 参考价
@@ -187,23 +187,17 @@ export function PurchaseAdvice({ result }: PurchaseAdviceProps) {
           </Tooltip>
         </Col>
 
-        {/* 第4列：历史最低 */}
+        {/* 第4列：加权均价（EWMA） */}
         <Col xs={12} sm={8}>
-          <Tooltip
-            title={
-              details.lowestPriceRecord
-                ? `${details.lowestPriceRecord.worldName} · ${details.lowestPriceRecord.buyerName} · ${new Date(details.lowestPriceRecord.timestamp * 1000).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}${details.lowestPriceRecord.hq ? " · HQ" : ""}`
-                : "本地存储的历史成交价最低值"
-            }
-          >
+          <Tooltip title="EWMA 指数加权均价 — 近期成交赋予更高权重">
             <div className="pa-item">
               <div className="pa-label">
-                历史最低
+                加权均价
                 <InfoCircleOutlined className="pa-info-icon" />
               </div>
               <div className="pa-value">
-                {details.historicalLowestPrice > 0
-                  ? fmtPrice(details.historicalLowestPrice)
+                {details.ewmaPrice > 0
+                  ? fmtPrice(details.ewmaPrice)
                   : <span className="pa-na">暂无</span>}
               </div>
             </div>
@@ -245,22 +239,7 @@ export function PurchaseAdvice({ result }: PurchaseAdviceProps) {
         </Col>
 
         {/* 第3行：辅助指标 */}
-        <Col xs={12} sm={6}>
-          <Tooltip title="EWMA 指数加权均价 — 近期成交赋予更高权重">
-            <div className="pa-item">
-              <div className="pa-label">
-                加权均价
-                <InfoCircleOutlined className="pa-info-icon" />
-              </div>
-              <div className="pa-value">
-                {details.ewmaPrice > 0
-                  ? fmtPrice(details.ewmaPrice)
-                  : <span className="pa-na">暂无</span>}
-              </div>
-            </div>
-          </Tooltip>
-        </Col>
-        <Col xs={12} sm={6}>
+        <Col xs={12} sm={8}>
           <Tooltip title="变异系数 CV = 标准差 ÷ 均值">
             <div className="pa-item">
               <div className="pa-label">
@@ -275,7 +254,7 @@ export function PurchaseAdvice({ result }: PurchaseAdviceProps) {
             </div>
           </Tooltip>
         </Col>
-        <Col xs={12} sm={6}>
+        <Col xs={12} sm={8}>
           <Tooltip title="基于 EWMA 的近期 vs 远期价格趋势">
             <div className="pa-item">
               <div className="pa-label">
@@ -289,7 +268,7 @@ export function PurchaseAdvice({ result }: PurchaseAdviceProps) {
             </div>
           </Tooltip>
         </Col>
-        <Col xs={12} sm={6}>
+        <Col xs={12} sm={8}>
           <Tooltip title={`近 7 天成交 ${details.recentWeekCount} 笔 / 共 ${details.recordCount} 笔`}>
             <div className="pa-item">
               <div className="pa-label">
