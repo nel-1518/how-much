@@ -43,6 +43,18 @@ export interface UniversalisResponse {
   recentHistory?: UniversalisHistory[];
 }
 
+// ---- 本地物品数据库 ----
+export interface ItemDbEntry {
+  id: number;
+  name: string;
+}
+
+export interface ItemDbVersion {
+  version: string;
+  itemCount: number;
+  generated: string;
+}
+
 // ---- 搜索历史 ----
 export interface SearchHistoryItem {
   id: number;
@@ -59,13 +71,4 @@ export interface TransactionStore {
   };
 }
 
-// ---- 自定义物品映射 ----
-export interface CustomItem {
-  name: string;
-  itemId: number;
-  addedTime: number;
-}
 
-export interface CustomItemStore {
-  [key: string]: CustomItem;
-}

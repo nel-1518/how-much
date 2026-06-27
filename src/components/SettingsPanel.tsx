@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Drawer, Segmented, Switch, Space, Typography, Divider, Tooltip, Modal, Button } from "antd";
+import { Drawer, Segmented, Switch, Space, Typography, Divider, Tooltip, Modal } from "antd";
 import {
   SettingOutlined,
   MoonOutlined,
@@ -7,12 +7,10 @@ import {
   LaptopOutlined,
   SaveOutlined,
   ExclamationCircleOutlined,
-  AppstoreAddOutlined,
 } from "@ant-design/icons";
 import type { ThemeMode } from "../constants";
 import { TRANSACTION_RECORDS_KEY } from "../constants";
-import type { CustomItemStore, TransactionStore } from "../types";
-import { CustomItemModal } from "./CustomItemModal";
+import type { TransactionStore } from "../types";
 
 interface SettingsPanelProps {
   open: boolean;
@@ -21,8 +19,6 @@ interface SettingsPanelProps {
   onThemeModeChange: (mode: ThemeMode) => void;
   recordingEnabled: boolean;
   onRecordingToggle: (enabled: boolean) => void;
-  customItems: CustomItemStore;
-  onCustomItemsChange: (items: CustomItemStore) => void;
 }
 
 /** 设置面板 — 以 Drawer 形式从右侧滑出 */
@@ -33,10 +29,7 @@ export function SettingsPanel({
   onThemeModeChange,
   recordingEnabled,
   onRecordingToggle,
-  customItems,
-  onCustomItemsChange,
 }: SettingsPanelProps) {
-  const [customItemModalOpen, setCustomItemModalOpen] = useState(false);
   const [recordCount, setRecordCount] = useState(0);
   const [recordSize, setRecordSize] = useState(0);
 
@@ -146,38 +139,6 @@ export function SettingsPanel({
       </div>
 
       <Divider style={{ margin: "20px 0" }} />
-
-      {/* ---- 自定义物品 ---- */}
-      <Typography.Title level={5} style={{ marginBottom: 12 }}>
-        <AppstoreAddOutlined style={{ marginRight: 6 }} />
-        自定义物品
-      </Typography.Title>
-
-      <div className="settings-row">
-        <Space direction="vertical" style={{ width: "100%" }} size={2}>
-          <Typography.Text strong>快速物品映射</Typography.Text>
-          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-            添加物品名称和ID，搜索时优先匹配本地物品
-          </Typography.Text>
-          <Button 
-            type="primary" 
-            icon={<AppstoreAddOutlined />}
-            onClick={() => setCustomItemModalOpen(true)}
-            style={{ marginTop: 8 }}
-            block
-          >
-            管理物品 ({Object.keys(customItems).length})
-          </Button>
-        </Space>
-      </div>
-
-      {/* 自定义物品 Modal */}
-      <CustomItemModal
-        open={customItemModalOpen}
-        onClose={() => setCustomItemModalOpen(false)}
-        customItems={customItems}
-        onSave={onCustomItemsChange}
-      />
     </Drawer>
   );
 }

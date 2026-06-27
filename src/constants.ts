@@ -70,5 +70,10 @@ export const DEFAULT_REGION = "中国";
 export const THEME_KEY = "ff14_theme_mode";
 export type ThemeMode = "auto" | "light" | "dark";
 
-// 自定义物品映射
-export const CUSTOM_ITEMS_KEY = "ff14_custom_items";
+// 本地物品数据库
+export const ITEM_DB_VERSION_KEY = "ff14_item_db_version";
+export const ITEM_DB_DATA_KEY = "ff14_item_db_data";
+// 注意：如果部署在子路径下（如 http://host/how-much/），请修改基础路径
+export const ITEM_DB_BASE = "/how-much/data";
+export const ITEM_DB_VERSION_URL = `${ITEM_DB_BASE}/item-db.version.json`;
+export const ITEM_DB_DATA_URL = `${ITEM_DB_BASE}/item-db.json`;

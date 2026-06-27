@@ -9,6 +9,8 @@
 
 ## 数据来源
 
-[最终幻想 14 网页 API](https://xivapi-v2.xivcdn.com/)
+<del>[最终幻想 14 网页 API](https://xivapi-v2.xivcdn.com/)</del>
+
+[ffxiv-datamining-mixed](https://github.com/InfSein/ffxiv-datamining-mixed) ：[Item.csv](https://github.com/InfSein/ffxiv-datamining-mixed/blob/master/chs/Item.csv)
 
 [Universalis API](https://docs.universalis.app/)

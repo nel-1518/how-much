@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from "react";
-import { Button, Tooltip } from "antd";
+import { Button, Tooltip, Spin, Alert } from "antd";
 import { SettingOutlined } from "@ant-design/icons";
 import { REGION_KEY, DEFAULT_REGION } from "./constants";
 import type { ThemeMode } from "./constants";
 import { useSearchHistory } from "./hooks/useSearchHistory";
 import { usePriceQuery } from "./hooks/usePriceQuery";
 import { useItemSearch } from "./hooks/useItemSearch";
+import { useItemDatabase } from "./hooks/useItemDatabase";
 import { HeroSection } from "./components/HeroSection";
 import { SearchSection } from "./components/SearchSection";
 import { HistorySection } from "./components/HistorySection";
@@ -19,10 +20,8 @@ import {
   mergeTransactionRecords,
   cleanExpiredTransactionRecords,
   clearTransactionRecords,
-  loadCustomItems,
-  saveCustomItems,
 } from "./history";
-import type { TransactionStore, CustomItemStore } from "./types";
+import type { TransactionStore } from "./types";
 import "./App.css";
 
 interface AppProps {
@@ -37,9 +36,9 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
     cleanExpiredTransactionRecords();
     return loadTransactionRecords();
   });
-  const [customItems, setCustomItems] = useState<CustomItemStore>(loadCustomItems);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const itemDb = useItemDatabase();
   const historyHooks = useSearchHistory();
   const priceHooks = usePriceQuery();
   const searchHooks = useItemSearch({
@@ -47,7 +46,7 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
     fetchPriceData: priceHooks.fetchPriceData,
     addToHistory: historyHooks.addToHistory,
     clearPrice: priceHooks.clearPrice,
-    customItems,
+    itemDb,
   });
 
   // 获取到新的价格数据后，保存交易历史到本地（带自动去重）
@@ -77,14 +76,33 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
     }
   }, []);
 
-  const handleCustomItemsChange = useCallback((items: CustomItemStore) => {
-    setCustomItems(items);
-    saveCustomItems(items);
-  }, []);
-
   const handleFocus = useCallback(() => {
     if (searchHooks.results.length > 0) searchHooks.setShowResults(true);
   }, [searchHooks.results.length, searchHooks.setShowResults]);
+
+  // 物品数据库加载中
+  if (itemDb.status === "loading") {
+    return (
+      <div className="app-container" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
+        <Spin size="large" tip="正在加载物品数据库…" />
+      </div>
+    );
+  }
+
+  // 物品数据库加载失败
+  if (itemDb.status === "error") {
+    return (
+      <div className="app-container" style={{ padding: 48 }}>
+        <Alert
+          message="加载失败"
+          description={itemDb.errorMsg}
+          type="error"
+          showIcon
+          action={<Button onClick={() => window.location.reload()}>刷新页面</Button>}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className={`app-container ${searchHooks.hasSearched ? "searched" : ""}`}>
@@ -136,8 +154,6 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
           onViewTabChange={searchHooks.setViewTab}
           onWiki={searchHooks.handleWiki}
           transactionStore={transactionStore}
-          customItems={customItems}
-          onCustomItemsChange={handleCustomItemsChange}
         />
       )}
 
@@ -149,8 +165,6 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
         onThemeModeChange={onThemeModeChange}
         recordingEnabled={recordingEnabled}
         onRecordingToggle={handleRecordingToggle}
-        customItems={customItems}
-        onCustomItemsChange={handleCustomItemsChange}
       />
     </div>
   );
