@@ -213,7 +213,7 @@ function main() {
 
   // 写入物品数据 JSON
   const dataPath = path.join(outDir, 'item-db.json');
-  fs.writeFileSync(dataPath, JSON.stringify(items, null, 2), 'utf-8');
+  fs.writeFileSync(dataPath, JSON.stringify(items), 'utf-8');
 
   // 写入版本文件 JSON
   const versionPath = path.join(outDir, 'item-db.version.json');
