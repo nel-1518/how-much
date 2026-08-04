@@ -1,11 +1,28 @@
-import { useMemo } from "react";
-import { Typography, Spin, Segmented, Row, Col, Card, Table, Empty, Button, Tooltip, Tag, message } from "antd";
+import { useMemo, useState, type ReactNode } from "react";
+import { Typography, Spin, Segmented, Row, Col, Card, Table, Empty, Button, Tooltip, Tag, message, Pagination } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse, TransactionStore } from "../types";
-import { listingColumns, historyColumns } from "../columns";
+import { listingColumns, historyColumns, renderWorldName, formatTradeTime } from "../columns";
 import { REGION_KEY } from "../constants";
 import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
 import { PurchaseAdvice } from "./PurchaseAdvice";
+
+/** 移动端分页列表：每页 15 条，数据/标签变化时通过 key 重置回第一页 */
+function MobilePagedList<T>({ items, renderItem }: {
+  items: T[];
+  renderItem: (item: T, globalIndex: number) => ReactNode;
+}) {
+  const [page, setPage] = useState(1);
+  const maxPage = Math.max(1, Math.ceil(items.length / 15));
+  const current = Math.min(page, maxPage);
+  const pageItems = items.slice((current - 1) * 15, current * 15);
+  return (
+    <div className="data-mobile-list">
+      {pageItems.map((item, i) => renderItem(item, (current - 1) * 15 + i))}
+      <Pagination simple current={current} pageSize={15} total={items.length} onChange={setPage} />
+    </div>
+  );
+}
 
 interface PriceSectionProps {
   selectedItem: ItemResult;
@@ -52,13 +69,39 @@ export function PriceSection({
       }
     >
       {priceData?.listings?.length ? (
-        <Table
-          dataSource={priceData.listings} columns={listingColumns}
-          rowKey={(_, i) => String(i)} size="small"
-          pagination={{ pageSize: 15, showSizeChanger: false }}
-          scroll={{ x: 450 }}
-          rowClassName={(_, index) => index < 3 ? "top-three-row" : ""}
-        />
+        <>
+          <div className="data-table-desktop">
+            <Table
+              dataSource={priceData.listings} columns={listingColumns}
+              rowKey={(_, i) => String(i)} size="small"
+              pagination={{ pageSize: 15, showSizeChanger: false }}
+              scroll={{ x: 450 }}
+              rowClassName={(_, index) => index < 3 ? "top-three-row" : ""}
+            />
+          </div>
+          <div className="data-mobile-table">
+            <MobilePagedList
+              key={`${selectedItem.row_id}-${viewTab}`}
+              items={priceData.listings}
+              renderItem={(item, index) => (
+                <div key={index} className={`data-mobile-item${index < 3 ? " top-three-row" : ""}`}>
+                  <div className="data-mobile-line">
+                    {renderWorldName(item.worldName)}
+                    {item.hq
+                      ? <Tag color="gold" className="hq-tag">HQ</Tag>
+                      : <Tag className="nq-tag">NQ</Tag>}
+                  </div>
+                  <div className="data-mobile-line">
+                    <span className="price-cell">
+                      {item.pricePerUnit.toLocaleString()} <span className="gil-suffix">Gil</span>
+                    </span>
+                    <span className="data-mobile-meta">×{item.quantity} · 总计 {item.total.toLocaleString()} Gil</span>
+                  </div>
+                </div>
+              )}
+            />
+          </div>
+        </>
       ) : <Empty description="暂无出售数据" />}
     </Card>
   );
@@ -66,12 +109,42 @@ export function PriceSection({
   const historyCard = () => (
     <Card title={<><HistoryOutlined /> 交易历史</>} size="small" className="data-card">
       {priceData?.recentHistory?.length ? (
-        <Table
-          dataSource={priceData.recentHistory} columns={historyColumns}
-          rowKey={(_, i) => String(i)} size="small"
-          pagination={{ pageSize: 15, showSizeChanger: false }}
-          scroll={{ x: 550 }}
-        />
+        <>
+          <div className="data-table-desktop">
+            <Table
+              dataSource={priceData.recentHistory} columns={historyColumns}
+              rowKey={(_, i) => String(i)} size="small"
+              pagination={{ pageSize: 15, showSizeChanger: false }}
+              scroll={{ x: 550 }}
+            />
+          </div>
+          <div className="data-mobile-table">
+            <MobilePagedList
+              key={`${selectedItem.row_id}-${viewTab}`}
+              items={priceData.recentHistory}
+              renderItem={(item) => (
+                <div key={item.timestamp + item.worldName + item.pricePerUnit} className="data-mobile-item">
+                  <div className="data-mobile-line">
+                    {renderWorldName(item.worldName)}
+                    {item.hq
+                      ? <Tag color="gold" className="hq-tag">HQ</Tag>
+                      : <Tag className="nq-tag">NQ</Tag>}
+                  </div>
+                  <div className="data-mobile-line">
+                    <span className="price-cell">
+                      {item.pricePerUnit.toLocaleString()} <span className="gil-suffix">Gil</span>
+                    </span>
+                    <span className="data-mobile-meta">数量 ×{item.quantity}</span>
+                  </div>
+                  <div className="data-mobile-line data-mobile-sub">
+                    <span className="data-mobile-meta">{item.buyerName}</span>
+                    <span className="time-cell">{formatTradeTime(item.timestamp)}</span>
+                  </div>
+                </div>
+              )}
+            />
+          </div>
+        </>
       ) : <Empty description="暂无交易记录" />}
     </Card>
   );

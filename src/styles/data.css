@@ -620,3 +620,98 @@
     padding: 0 2px;
   }
 }
+
+/* ===== 移动端：出售列表 / 交易历史（整行内容一次可见） ===== */
+.data-table-desktop {
+  display: block;
+}
+
+.data-mobile-table {
+  display: none;
+}
+
+.data-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.data-mobile-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+
+.data-mobile-item.top-three-row {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.02));
+}
+
+.data-mobile-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.data-mobile-line .world-name,
+.data-mobile-line .price-cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-mobile-meta {
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+
+.data-mobile-sub {
+  padding-top: 4px;
+  border-top: 1px dashed var(--border-light);
+}
+
+.data-mobile-list .ant-pagination {
+  margin: 6px 0 0;
+  text-align: center;
+}
+
+.data-mobile-list .ant-pagination-prev,
+.data-mobile-list .ant-pagination-next,
+.data-mobile-list .ant-pagination-item {
+  min-width: 28px;
+  height: 28px;
+  line-height: 28px;
+  font-size: 12px;
+}
+
+@media (max-width: 992px) {
+  .data-table-desktop {
+    display: none;
+  }
+  .data-mobile-table {
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .data-mobile-item {
+    padding: 9px 10px;
+  }
+  .data-mobile-meta {
+    font-size: 11px;
+  }
+  .data-mobile-line .price-cell {
+    font-size: 13px;
+  }
+}

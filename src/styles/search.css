@@ -1,6 +1,6 @@
-/* ===== 搜索栏 ===== */
+/* ===== 搜索 ===== */
 
-/* 搜索栏色板（浅色） */
+/* 搜索色板（浅色） */
 :root {
   --search-bg: #f1f2f3;
   --search-bg-hover: #ffffff;
@@ -16,6 +16,7 @@
   --search-icon: #61666d;
   --search-clear: #c9ccd0;
   --search-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+  --search-overlay: rgba(24, 21, 35, 0.16);
 }
 
 /* 深色（跟随系统） */
@@ -35,6 +36,7 @@
     --search-icon: #a2a7ae;
     --search-clear: #46494d;
     --search-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+    --search-overlay: rgba(0, 0, 0, 0.45);
   }
 }
 
@@ -54,89 +56,43 @@
   --search-icon: #a2a7ae;
   --search-clear: #46494d;
   --search-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+  --search-overlay: rgba(0, 0, 0, 0.45);
 }
 
-/* ===== 搜索卡片 ===== */
-.search-card {
+/* ===== 顶部搜索输入框 ===== */
+.top-nav .search-trigger-input.ant-input-affix-wrapper {
   width: 100%;
-  max-width: 500px;
-  border-radius: 16px !important;
-  background: var(--bg-card) !important;
-  box-shadow: none;
-  border: none !important;
-}
-
-/* 默认扁平嵌入导航栏 */
-.top-nav .search-card {
   max-width: 520px;
-  background: transparent !important;
-  border: 1px solid transparent !important;
-  box-shadow: none !important;
-  border-radius: 0 !important;
-  transition: box-shadow 0.25s ease;
-}
-
-/* 聚焦/展开时整卡浮起：输入框保持原样，面板在下方浮起 */
-.top-nav .search-card.open {
-  background: var(--bg-card) !important;
-  border-color: var(--border-light) !important;
-  border-radius: 18px !important;
-  box-shadow:
-    var(--shadow-lg),
-    0 0 0 1px var(--border-light),
-    0 8px 32px var(--search-ring) !important;
-}
-
-.search-card .ant-card-body {
-  display: flex;
-  justify-content: center;
-  padding: 20px 20px 16px;
-}
-
-.top-nav .search-card .ant-card-body {
-  padding: 0 !important;
-  justify-content: center;
-}
-
-/* ===== 输入框 ===== */
-.search-input.ant-input-affix-wrapper {
-  border-radius: 14px !important;
-}
-.search-input.ant-input-affix-wrapper:focus-within {
-  box-shadow: none !important;
-}
-
-.top-nav .search-input.ant-input-affix-wrapper {
   height: 46px;
   padding: 0 6px 0 14px;
   align-items: center;
+  border-radius: 14px !important;
   background: var(--search-bg);
   border: 1px solid var(--search-border) !important;
   box-shadow:
     inset 0 1px 0 var(--search-highlight),
     0 1px 2px rgba(0, 0, 0, 0.03) !important;
-  cursor: text;
-  opacity: 0.92;
   transition:
     background-color 0.25s ease,
     border-color 0.25s ease,
-    box-shadow 0.25s ease,
-    opacity 0.25s ease,
-    transform 0.25s ease;
+    box-shadow 0.25s ease;
 }
 
-.top-nav .search-input.ant-input-affix-wrapper:hover {
+.top-nav .search-trigger-input.ant-input-affix-wrapper:hover {
   background: var(--search-bg-hover);
   border-color: var(--search-border-hover) !important;
-  box-shadow:
-    inset 0 1px 0 var(--search-highlight),
-    0 2px 12px var(--search-ring) !important;
-  opacity: 1;
-  transform: translateY(-1px);
 }
 
-/* 输入区 */
-.top-nav .search-input .ant-input {
+.top-nav .search-trigger-input.ant-input-affix-wrapper:focus-within {
+  background: var(--search-bg-hover);
+  border-color: var(--search-border-focus) !important;
+  box-shadow:
+    0 0 0 3px var(--search-ring),
+    0 0 0 1px var(--search-border-focus),
+    0 6px 20px var(--search-glow) !important;
+}
+
+.top-nav .search-trigger-input .ant-input {
   height: 32px;
   padding: 0 2px;
   color: var(--search-text);
@@ -145,62 +101,34 @@
   border-radius: 8px;
   background: transparent;
   caret-color: var(--accent);
-  transition: color 0.25s ease;
 }
 
-.top-nav .search-input .ant-input::placeholder {
+.top-nav .search-trigger-input .ant-input::placeholder {
   color: var(--search-placeholder);
-  transition: color 0.25s ease;
 }
 
-.top-nav .search-input .ant-input::selection {
-  background: var(--accent-bg);
-  color: var(--accent);
-}
-
-.top-nav .search-input .ant-input:focus-visible {
+.top-nav .search-trigger-input .ant-input:focus-visible,
+.top-nav .search-trigger-input.ant-input-affix-wrapper:focus-visible {
   outline: none !important;
 }
 
-/* 点击输入框时去除 focus 轮廓（避免边框闪烁） */
-.top-nav .search-input.ant-input-affix-wrapper:focus-visible {
-  outline: none !important;
-}
-
-/* 聚焦时：强调色描边 + 三层柔和光晕 */
-.top-nav .search-input.ant-input-affix-wrapper:focus-within {
-  background: var(--search-bg-hover);
-  border-color: var(--search-border-focus) !important;
-  box-shadow:
-    0 0 0 3px var(--search-ring),
-    0 0 0 1px var(--search-border-focus),
-    0 6px 20px var(--search-glow) !important;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* 前置放大镜图标 */
-.top-nav .search-input .ant-input-prefix {
+.top-nav .search-trigger-input .ant-input-prefix {
   display: flex;
   align-items: center;
   margin-inline-end: 8px;
   color: var(--search-icon);
   transition: color 0.25s ease;
 }
-.top-nav .search-input .ant-input-prefix .anticon {
+
+.top-nav .search-trigger-input .ant-input-prefix .anticon {
   font-size: 16px;
-  transition: transform 0.25s ease;
-}
-.top-nav .search-input.ant-input-affix-wrapper:focus-within .ant-input-prefix {
-  color: var(--accent);
-}
-.top-nav .search-input.ant-input-affix-wrapper:focus-within .ant-input-prefix .anticon {
-  transform: scale(1.1);
-  animation: searchIconPulse 1.8s ease-in-out infinite;
 }
 
-/* 清除按钮（allowClear X） */
-.top-nav .search-input .ant-input-clear-icon {
+.top-nav .search-trigger-input.ant-input-affix-wrapper:focus-within .ant-input-prefix {
+  color: var(--accent);
+}
+
+.top-nav .search-trigger-input .ant-input-clear-icon {
   color: var(--search-clear) !important;
   font-size: 13px;
   width: 18px;
@@ -211,20 +139,175 @@
   border-radius: 50%;
   transition: all 0.2s ease;
 }
-.top-nav .search-input .ant-input-clear-icon:hover {
+
+.top-nav .search-trigger-input .ant-input-clear-icon:hover {
   color: var(--accent) !important;
   background: var(--accent-bg);
 }
 
-/* ===== 搜索结果列表 ===== */
-.search-results {
-  position: relative;
+/* 顶部输入框右侧的 Tab 键提示 */
+.top-nav .search-trigger-input .search-trigger-kbd {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1;
+  padding: 3px 6px;
+  margin-inline-start: 4px;
+  border: 1px solid var(--border-light);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ===== 居中悬浮搜索卡片 ===== */
+.search-modal-overlay {
+  position: fixed;
+  top: var(--vv-top, 0);
+  left: 0;
+  right: 0;
+  height: var(--vv-height, 100%);
+  /* 低于顶部导航栏(200)，让搜索输入框始终在遮罩之上可见可输入 */
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--top-nav-h) 24px 24px;
+  background: var(--search-overlay);
+  animation: fadeIn 0.2s ease;
+}
+
+.search-modal-card {
   width: 100%;
-  margin-top: 6px;
-  padding: 8px 10px 10px;
-  border-top: 1px solid transparent;
+  max-width: 600px;
+  max-height: min(640px, calc(var(--vv-height, 100vh) - var(--top-nav-h) - 48px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 18px !important;
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border-light) !important;
+  box-shadow:
+    var(--shadow-xl),
+    0 0 0 1px var(--border-light),
+    0 12px 48px var(--search-glow) !important;
+  animation: searchCardIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.search-modal-card .ant-card-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+}
+
+/* ===== 卡片内输入框（与顶部输入框同步显示） ===== */
+.search-modal-input-row {
+  padding: 16px 16px 0;
+}
+
+.search-modal-input-row .search-input.ant-input-affix-wrapper {
+  height: 48px;
+  padding: 0 6px 0 14px;
+  align-items: center;
+  border-radius: 14px !important;
+  background: var(--search-bg);
+  border: 1px solid var(--search-border) !important;
+  box-shadow:
+    inset 0 1px 0 var(--search-highlight),
+    0 1px 2px rgba(0, 0, 0, 0.03) !important;
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.search-modal-input-row .search-input.ant-input-affix-wrapper:hover {
+  background: var(--search-bg-hover);
+  border-color: var(--search-border-hover) !important;
+}
+
+.search-modal-input-row .search-input.ant-input-affix-wrapper:focus-within {
+  background: var(--search-bg-hover);
+  border-color: var(--search-border-focus) !important;
+  box-shadow:
+    0 0 0 3px var(--search-ring),
+    0 0 0 1px var(--search-border-focus),
+    0 6px 20px var(--search-glow) !important;
+}
+
+.search-modal-input-row .search-input .ant-input {
+  height: 32px;
+  padding: 0 2px;
+  color: var(--search-text);
+  font-size: 14px;
+  line-height: 32px;
+  border-radius: 8px;
+  background: transparent;
+  caret-color: var(--accent);
+}
+
+.search-modal-input-row .search-input .ant-input::placeholder {
+  color: var(--search-placeholder);
+}
+
+.search-modal-input-row .search-input .ant-input:focus-visible,
+.search-modal-input-row .search-input.ant-input-affix-wrapper:focus-visible {
+  outline: none !important;
+}
+
+.search-modal-input-row .search-input .ant-input-prefix {
+  display: flex;
+  align-items: center;
+  margin-inline-end: 8px;
+  color: var(--search-icon);
+}
+
+.search-modal-input-row .search-input .ant-input-prefix .anticon {
+  font-size: 16px;
+}
+
+.search-modal-input-row .search-input.ant-input-affix-wrapper:focus-within .ant-input-prefix {
+  color: var(--accent);
+}
+
+.search-modal-input-row .search-input .ant-input-clear-icon {
+  color: var(--search-clear) !important;
+  font-size: 13px;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.search-modal-input-row .search-input .ant-input-clear-icon:hover {
+  color: var(--accent) !important;
+  background: var(--accent-bg);
+}
+
+/* ===== 搜索结果列表（卡片内） ===== */
+.search-modal-card .search-results {
+  flex: 1;
+  min-height: 120px;
+  position: relative;
+  margin-top: 10px;
+  padding: 10px 16px 16px;
+  overflow-y: auto;
   animation: searchDropIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
   transform-origin: top center;
+}
+
+/* 卡片内结果列表由外层容器统一滚动，避免双滚动条 */
+.search-modal-card .result-list {
+  max-height: none;
+  overflow: visible;
+}
+
+.search-modal-card .search-history-list {
+  max-height: 224px;
 }
 
 /* 面板顶部渐变分割线 */
@@ -232,8 +315,8 @@
   content: "";
   position: absolute;
   top: 0;
-  left: 18px;
-  right: 18px;
+  left: 16px;
+  right: 16px;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--accent-border), transparent);
   pointer-events: none;
@@ -376,10 +459,10 @@
   background: var(--accent-bg);
 }
 
-/* ===== 搜索历史（下拉框内） ===== */
+/* ===== 搜索历史 ===== */
 .search-history {
   width: 100%;
-  max-width: 100%;
+  max-width: 800px;
 }
 
 .search-history-header {
@@ -463,7 +546,6 @@
 .search-history-item:hover {
   background: var(--accent-bg);
   border-color: var(--accent-border);
-  transform: translateY(-1px);
   box-shadow: 0 2px 10px var(--search-ring);
 }
 
@@ -530,11 +612,34 @@
   padding: 18px 16px;
 }
 
+/* ===== 主页搜索历史卡片 ===== */
+.home-history-card {
+  width: 100%;
+  max-width: 800px;
+  margin-top: 8px;
+  /* 无背景、无边框、无阴影，仅展示历史标签 */
+}
+
+.home-history-card .search-history-list {
+  max-height: 264px;
+}
+
 /* ===== 动画 ===== */
 @keyframes searchDropIn {
   from {
     opacity: 0;
     transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes searchCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
   }
   to {
     opacity: 1;
@@ -553,23 +658,15 @@
   }
 }
 
-@keyframes searchIconPulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.08);
-  }
-}
-
 /* 减弱动效偏好 */
 @media (prefers-reduced-motion: reduce) {
+  .search-modal-overlay,
+  .search-modal-card,
   .search-results,
   .result-item,
   .result-arrow,
   .search-history-item,
-  .top-nav .search-input.ant-input-affix-wrapper {
+  .top-nav .search-trigger-input.ant-input-affix-wrapper {
     transition: none !important;
     animation: none !important;
   }
@@ -577,17 +674,39 @@
 
 /* ===== 响应式 ===== */
 @media (max-width: 768px) {
-  .top-nav .search-card {
+  .top-nav .search-trigger-input.ant-input-affix-wrapper {
     max-width: 100%;
-  }
-  .top-nav .search-input.ant-input-affix-wrapper {
     height: 44px;
   }
+  .top-nav .search-trigger-input .ant-input {
+    /* 移动端 16px 以上避免 iOS 聚焦时自动缩放页面 */
+    font-size: 16px;
+  }
+  .search-modal-overlay {
+    padding: var(--top-nav-h) 12px 12px;
+  }
+  .search-modal-card {
+    max-width: 100%;
+    max-height: calc(var(--vv-height, 100vh) - var(--top-nav-h) - 24px);
+  }
+  .search-modal-input-row .search-input .ant-input {
+    /* 移动端 16px 以上避免 iOS 聚焦时自动缩放页面 */
+    font-size: 16px;
+  }
   .result-item {
-    padding: 7px 10px 7px 12px;
+    padding: 8px 10px 8px 12px;
+    align-items: flex-start;
   }
   .result-name {
     font-size: 13px;
+    line-height: 1.45;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    word-break: break-word;
+  }
+  .result-arrow {
+    margin-top: 2px;
   }
   .search-history-list {
     max-height: 260px;

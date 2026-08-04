@@ -2,7 +2,7 @@ import { Tag } from "antd";
 import { WORLD_TO_DC, DC_ICON_MAP } from "./constants";
 
 /** 渲染服务器名称 + 大区图标 */
-const renderWorldName = (worldName: string) => {
+export const renderWorldName = (worldName: string) => {
   const dc = WORLD_TO_DC[worldName];
   const icon = dc ? DC_ICON_MAP[dc] : null;
   return (
@@ -12,6 +12,15 @@ const renderWorldName = (worldName: string) => {
     </span>
   );
 };
+
+/** 格式化交易时间（月/日 时:分） */
+export const formatTradeTime = (v: number) =>
+  new Date(v * 1000).toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 export const listingColumns = [
   {
@@ -121,14 +130,7 @@ export const historyColumns = [
     key: "timestamp",
     width: 130,
     render: (v: number) => (
-      <span className="time-cell">
-        {new Date(v * 1000).toLocaleString("zh-CN", {
-          month: "2-digit",
-          day: "2-digit",
-          hour: "2-digit",
-          minute: "2-digit",
-        })}
-      </span>
+      <span className="time-cell">{formatTradeTime(v)}</span>
     ),
   },
 ];

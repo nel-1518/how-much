@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect } from "react";
-import { Button, Spin, Alert } from "antd";
+import { useState, useCallback, useEffect, useRef, type ComponentRef } from "react";
+import { flushSync } from "react-dom";
+import { Button, Spin, Alert, type Input } from "antd";
 import { REGION_KEY, DEFAULT_REGION } from "./constants";
 import type { ThemeMode } from "./constants";
 import { useSearchHistory } from "./hooks/useSearchHistory";
@@ -8,6 +9,8 @@ import { useItemSearch } from "./hooks/useItemSearch";
 import { useItemDatabase } from "./hooks/useItemDatabase";
 import { HeroSection } from "./components/HeroSection";
 import { TopNav } from "./components/TopNav";
+import { SearchCard } from "./components/SearchCard";
+import { HistorySection } from "./components/HistorySection";
 import { PriceSection } from "./components/PriceSection";
 import { SettingsPanel } from "./components/SettingsPanel";
 import {
@@ -35,8 +38,11 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
     return loadTransactionRecords();
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  // 是否由 Tab 打开卡片（决定卡片输入框是否自动聚焦）
+  const [focusCardOnOpen, setFocusCardOnOpen] = useState(false);
 
   const itemDb = useItemDatabase();
+  const { findExactName } = itemDb;
   const historyHooks = useSearchHistory();
   const priceHooks = usePriceQuery();
   const searchHooks = useItemSearch({
@@ -46,6 +52,12 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
     clearPrice: priceHooks.clearPrice,
     itemDb,
   });
+  const { setActiveIndex, setShowResults, handleKeywordChange, selectByDbEntry } = searchHooks;
+
+  // 键盘打开卡片时的状态：待补入的首字符、IME 组合中标记、顶部输入框引用
+  const pendingKeyRef = useRef<string | null>(null);
+  const composingRef = useRef(false);
+  const topInputRef = useRef<ComponentRef<typeof Input> | null>(null);
 
   // 获取到新的价格数据后，保存交易历史到本地（带自动去重）
   useEffect(() => {
@@ -74,9 +86,147 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
     }
   }, []);
 
-  const handleFocus = useCallback(() => {
-    searchHooks.setShowResults(true);
-  }, [searchHooks.setShowResults]);
+  const closeSearchCard = useCallback(() => {
+    setShowResults(false);
+  }, [setShowResults]);
+
+  /** 顶部输入框内容变化：按输入方式打开卡片（不自动聚焦卡片输入框） */
+  const handleTopKeywordChange = useCallback((v: string) => {
+    setFocusCardOnOpen(false);
+    handleKeywordChange(v);
+  }, [handleKeywordChange]);
+
+  // 记录卡片开合状态，供全局键盘监听使用（避免闭包过期）
+  const showResultsRef = useRef(searchHooks.showResults);
+  useEffect(() => {
+    showResultsRef.current = searchHooks.showResults;
+  }, [searchHooks.showResults]);
+
+  // 全局键盘：Esc 关闭卡片；Tab 开关卡片；字母/数字或 IME 首个按键打开卡片并聚焦输入框；
+  // Ctrl+V 粘贴直接打开并置入输入栏
+  useEffect(() => {
+    const openAndFocusCard = () => {
+      // 同步渲染卡片并聚焦顶部输入框，让当前按键的默认行为
+      // （拉丁字符插入 / IME 组合输入）直接落到已聚焦的输入框上
+      setFocusCardOnOpen(false);
+      flushSync(() => {
+        setActiveIndex(0);
+        setShowResults(true);
+      });
+      topInputRef.current?.focus();
+    };
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (showResultsRef.current) {
+          e.preventDefault();
+          closeSearchCard();
+        }
+        return;
+      }
+      if (settingsOpen) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // Tab：卡片打开时关闭；关闭时打开并聚焦卡片内输入框
+      // 顶部输入框已有内容时保留内容（显示对应搜索结果）并全选，空内容时显示历史
+      if (e.key === "Tab") {
+        if (showResultsRef.current) {
+          e.preventDefault();
+          closeSearchCard();
+          return;
+        }
+        e.preventDefault();
+        setFocusCardOnOpen(true);
+        setActiveIndex(0);
+        const current = topInputRef.current?.input?.value ?? "";
+        handleKeywordChange(current);
+        return;
+      }
+
+      if (showResultsRef.current) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) return;
+      if (e.isComposing) return;
+
+      // IME 组合首键（keyCode 229 / key "Process"）：只打开并聚焦，不插入、不阻止默认行为
+      if (e.keyCode === 229 || e.key === "Process") {
+        pendingKeyRef.current = null;
+        openAndFocusCard();
+        return;
+      }
+
+      // 字母/数字：不阻止默认行为，让字符直接进入输入框
+      if (e.key.length === 1 && /[a-zA-Z0-9]/.test(e.key)) {
+        pendingKeyRef.current = e.key;
+        openAndFocusCard();
+      }
+    };
+
+    const handleCompositionStart = (e: CompositionEvent) => {
+      composingRef.current = true;
+      // 组合若发生在输入框内（顶部或卡片内），不干预焦点；
+      // 仅在组合落在非输入框元素上（页面空白处打字唤起卡片的兜底场景）时聚焦顶部输入框
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) return;
+      if (showResultsRef.current) {
+        topInputRef.current?.focus();
+      }
+    };
+    const handleCompositionEnd = () => {
+      composingRef.current = false;
+    };
+
+    const handlePaste = (e: ClipboardEvent) => {
+      if (showResultsRef.current || settingsOpen) return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const inEditable = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable;
+      // 只接管页面空白处或顶部搜索输入框内的粘贴，其余输入控件保持原生粘贴
+      if (inEditable && !target?.closest(".search-trigger-input")) return;
+      const text = (e.clipboardData?.getData("text") ?? "").replace(/\s+/g, " ").trim();
+      if (!text) return;
+      e.preventDefault();
+
+      // 粘贴内容唯一精确匹配到物品时，直接查价
+      const exact = findExactName(text);
+      if (exact) {
+        selectByDbEntry(exact);
+        return;
+      }
+
+      handleKeywordChange(text);
+      setFocusCardOnOpen(false);
+      topInputRef.current?.focus();
+    };
+
+    document.addEventListener("keydown", handler);
+    document.addEventListener("paste", handlePaste);
+    document.addEventListener("compositionstart", handleCompositionStart);
+    document.addEventListener("compositionend", handleCompositionEnd);
+    return () => {
+      document.removeEventListener("keydown", handler);
+      document.removeEventListener("paste", handlePaste);
+      document.removeEventListener("compositionstart", handleCompositionStart);
+      document.removeEventListener("compositionend", handleCompositionEnd);
+    };
+  }, [settingsOpen, closeSearchCard, handleKeywordChange, setActiveIndex, setShowResults, setFocusCardOnOpen, findExactName, selectByDbEntry]);
+
+  // 键盘打开卡片后，若首个字符没有进入输入框（浏览器未把默认行为重定向到输入框），手动补入
+  useEffect(() => {
+    const key = pendingKeyRef.current;
+    if (key == null) return;
+    pendingKeyRef.current = null;
+    const timer = window.setTimeout(() => {
+      if (composingRef.current) return;
+      const el = topInputRef.current?.input;
+      if (!el || el.value !== key) {
+        handleKeywordChange(key);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [searchHooks.showResults, handleKeywordChange]);
 
   // 物品数据库加载中
   if (itemDb.status === "loading") {
@@ -109,26 +259,53 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
           keyword: searchHooks.keyword,
           results: searchHooks.results,
           loading: searchHooks.loading,
-          showResults: searchHooks.showResults,
           activeIndex: searchHooks.activeIndex,
-          history: historyHooks.sortedHistory,
-          onKeywordChange: searchHooks.handleKeywordChange,
+          inputRef: topInputRef,
+          onKeywordChange: handleTopKeywordChange,
           onSearch: searchHooks.doSearch,
           onSelectItem: searchHooks.handleSelectItem,
-          onSearchFromHistory: searchHooks.searchFromHistory,
-          onRemoveHistory: historyHooks.removeHistory,
-          onClearHistory: historyHooks.clearHistory,
-          onTogglePin: historyHooks.togglePin,
           onMoveActive: searchHooks.moveActiveIndex,
-          onActivate: searchHooks.setActiveIndex,
-          onFocus: handleFocus,
-          onCloseResults: () => searchHooks.setShowResults(false),
         }}
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
+      {/* 居中悬浮搜索卡片 */}
+      {searchHooks.showResults && (
+        <SearchCard
+          keyword={searchHooks.keyword}
+          results={searchHooks.results}
+          loading={searchHooks.loading}
+          activeIndex={searchHooks.activeIndex}
+          history={historyHooks.sortedHistory}
+          focusOnMount={focusCardOnOpen}
+          onKeywordChange={searchHooks.handleKeywordChange}
+          onSearch={searchHooks.doSearch}
+          onSelectItem={searchHooks.handleSelectItem}
+          onSearchFromHistory={searchHooks.searchFromHistory}
+          onRemoveHistory={historyHooks.removeHistory}
+          onClearHistory={historyHooks.clearHistory}
+          onTogglePin={historyHooks.togglePin}
+          onMoveActive={searchHooks.moveActiveIndex}
+          onActivate={searchHooks.setActiveIndex}
+          onClose={closeSearchCard}
+        />
+      )}
+
       <div className={`app-container ${searchHooks.hasSearched ? "searched" : ""}`}>
-        {!searchHooks.hasSearched && <HeroSection />}
+        {!searchHooks.hasSearched && (
+          <>
+            <HeroSection />
+            <div className="home-history-card">
+              <HistorySection
+                sortedHistory={historyHooks.sortedHistory}
+                onSearchFromHistory={searchHooks.searchFromHistory}
+                onRemoveHistory={historyHooks.removeHistory}
+                onClearHistory={historyHooks.clearHistory}
+                onTogglePin={historyHooks.togglePin}
+              />
+            </div>
+          </>
+        )}
 
         {searchHooks.selectedItem && (
           <PriceSection
@@ -154,6 +331,7 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
           onThemeModeChange={onThemeModeChange}
           recordingEnabled={recordingEnabled}
           onRecordingToggle={handleRecordingToggle}
+          itemDbVersion={itemDb.version}
         />
       </div>
     </>

@@ -56,7 +56,7 @@ export const DC_ICON_MAP: Record<string, string> = {
 // 搜索历史
 export const HISTORY_KEY = "ff14_search_history";
 export const HISTORY_PINNED_KEY = "ff14_search_history_pinned";
-export const MAX_HISTORY = 20;
+export const MAX_HISTORY = 30;
 
 // 交易记录本地存储
 export const TRANSACTION_RECORDS_KEY = "ff14_transaction_records";

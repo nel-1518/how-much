@@ -10,7 +10,7 @@ interface TopNavProps {
 /** 顶部导航栏：搜索栏居中，右侧为设置入口 */
 export function TopNav({ search, onOpenSettings }: TopNavProps) {
   return (
-    <header className={`top-nav${search.showResults ? " dropdown-open" : ""}`}>
+    <header className="top-nav">
       <div className="top-nav-inner">
         <div className="top-nav-spacer" aria-hidden="true" />
         <div className="top-nav-search">

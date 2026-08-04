@@ -50,10 +50,7 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     if (!trimmed) { setResults([]); return; }
 
     setLoading(true);
-    setHasSearched(true);
-    setSelectedItem(null);
     setActiveIndex(0);
-    clearPrice();
 
     if (!itemDb.ready) {
       message.warning("物品数据库正在加载，请稍后");
@@ -71,7 +68,7 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     } finally {
       setLoading(false);
     }
-  }, [clearPrice, itemDb]);
+  }, [itemDb]);
 
   /** 回车 / 点击搜索按钮：立即执行，并取消待定的实时搜索 */
   const doSearch = useCallback((query: string) => {
@@ -85,11 +82,17 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     setActiveIndex(0);
     setKeyword(item.fields.Name);
     setShowResults(false);
+    setHasSearched(true);
     setSelectedItem(item);
     setViewTab("listings");
     fetchPriceData(item.row_id, region);
     addToHistory(item.row_id, item.fields.Name);
   }, [region, fetchPriceData, addToHistory]);
+
+  /** 直接选中本地数据库条目（用于粘贴唯一匹配时直接查价） */
+  const selectByDbEntry = useCallback((entry: ItemDbEntry) => {
+    handleSelectItem(toItemResult(entry));
+  }, [handleSelectItem]);
 
   const searchFromHistory = useCallback((item: SearchHistoryItem) => {
     setKeyword(item.name);
@@ -163,6 +166,7 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     viewTab, setViewTab,
     doSearch,
     handleSelectItem,
+    selectByDbEntry,
     searchFromHistory,
     handleKeywordChange,
     handleWiki,

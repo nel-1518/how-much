@@ -24,6 +24,8 @@ interface ItemDatabaseState {
  */
 export function useItemDatabase() {
   const [state, setState] = useState<ItemDatabaseState>({ status: "loading" });
+  // 当前使用的数据库版本（用于设置面板展示）
+  const [version, setVersion] = useState<string | null>(null);
 
   // 存储数据的引用（不触发重渲染）
   const itemsRef = useRef<ItemDbEntry[]>([]);
@@ -38,6 +40,7 @@ export function useItemDatabase() {
       const items = itemsRef.current;
       const names = lowerNamesRef.current;
       const results: ItemDbEntry[] = [];
+      // 数据已按 id 倒序保存，从头扫描即按倒序命中，取前 limit 条即可
       for (let i = 0; i < items.length; i++) {
         if (names[i].includes(q)) {
           results.push(items[i]);
@@ -51,6 +54,18 @@ export function useItemDatabase() {
 
   const getById = useCallback((id: number): ItemDbEntry | undefined => {
     return idMapRef.current.get(id);
+  }, []);
+
+  /** 精确名称匹配（不区分大小写、忽略 FF14 特殊字符）；数据库内名称唯一，命中即唯一 */
+  const findExactName = useCallback((query: string): ItemDbEntry | undefined => {
+    const q = query.replace(/[\uE03C\uE0BB]/g, "").trim().toLowerCase();
+    if (!q || !readyRef.current) return undefined;
+    const items = itemsRef.current;
+    const names = lowerNamesRef.current;
+    for (let i = 0; i < items.length; i++) {
+      if (names[i] === q) return items[i];
+    }
+    return undefined;
   }, []);
 
   const getItemCount = useCallback((): number => {
@@ -122,12 +137,12 @@ export function useItemDatabase() {
           return;
         }
 
-        // 构建索引
-        itemsRef.current = data;
+        // 构建索引：按 id 倒序保存（新物品在前），搜索时无需全量匹配即可按倒序返回
+        itemsRef.current = [...data].sort((a, b) => b.id - a.id);
         const map = new Map<number, ItemDbEntry>();
         const lowerNames = new Array<string>(data.length);
         let nameIdx = 0;
-        for (const item of data) {
+        for (const item of itemsRef.current) {
           map.set(item.id, item);
           lowerNames[nameIdx++] = item.name.toLowerCase();
         }
@@ -136,6 +151,7 @@ export function useItemDatabase() {
         readyRef.current = true;
 
         if (!cancelled) {
+          setVersion(versionUsed);
           setState({ status: "ready" });
 
           // 新下载完成后弹提示
@@ -170,8 +186,10 @@ export function useItemDatabase() {
     status: state.status,
     errorMsg: state.errorMsg,
     ready: state.status === "ready",
+    version,
     searchByName,
     getById,
+    findExactName,
     getItemCount,
   };
 }
