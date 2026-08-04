@@ -11,8 +11,10 @@ import { HeroSection } from "./components/HeroSection";
 import { TopNav } from "./components/TopNav";
 import { SearchCard } from "./components/SearchCard";
 import { HistorySection } from "./components/HistorySection";
+import { HistorySidebar } from "./components/HistorySidebar";
 import { PriceSection } from "./components/PriceSection";
-import { SettingsPanel } from "./components/SettingsPanel";
+import { SettingsDialog } from "./components/SettingsDialog";
+import { InfoDialog } from "./components/InfoDialog";
 import {
   loadRecordingEnabled,
   saveRecordingEnabled,
@@ -21,6 +23,10 @@ import {
   mergeTransactionRecords,
   cleanExpiredTransactionRecords,
   clearTransactionRecords,
+  loadSidebarOpen,
+  saveSidebarOpen,
+  loadSidebarWidth,
+  saveSidebarWidth,
 } from "./history";
 import type { TransactionStore } from "./types";
 import "./App.css";
@@ -28,9 +34,11 @@ import "./App.css";
 interface AppProps {
   themeMode: ThemeMode;
   onThemeModeChange: (mode: ThemeMode) => void;
+  /** 当前是否为深色（auto 模式下由系统偏好决定） */
+  isDark: boolean;
 }
 
-function App({ themeMode, onThemeModeChange }: AppProps) {
+function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
   const [region, setRegion] = useState(() => localStorage.getItem(REGION_KEY) || DEFAULT_REGION);
   const [recordingEnabled, setRecordingEnabled] = useState(loadRecordingEnabled);
   const [transactionStore, setTransactionStore] = useState<TransactionStore>(() => {
@@ -38,6 +46,10 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
     return loadTransactionRecords();
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(loadSidebarOpen);
+  const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
+  const [sidebarResizing, setSidebarResizing] = useState(false);
   // 是否由 Tab 打开卡片（决定卡片输入框是否自动聚焦）
   const [focusCardOnOpen, setFocusCardOnOpen] = useState(false);
 
@@ -74,7 +86,8 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
       priceHooks.priceData.recentHistory,
     );
     saveTransactionRecords(newStore);
-    setTransactionStore(newStore);
+    // 延后一拍更新 state，避免在 effect 内同步 setState 触发级联渲染
+    queueMicrotask(() => setTransactionStore(newStore));
   }, [priceHooks.priceData, recordingEnabled, searchHooks.selectedItem]);
 
   const handleRecordingToggle = useCallback((enabled: boolean) => {
@@ -89,6 +102,23 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
   const closeSearchCard = useCallback(() => {
     setShowResults(false);
   }, [setShowResults]);
+
+  const handleToggleSidebar = useCallback(() => {
+    setSidebarOpen((prev) => {
+      const next = !prev;
+      saveSidebarOpen(next);
+      return next;
+    });
+  }, []);
+
+  const handleSidebarResize = useCallback((w: number) => {
+    setSidebarWidth(w);
+  }, []);
+
+  const handleSidebarResizeEnd = useCallback((w: number) => {
+    saveSidebarWidth(w);
+    setSidebarResizing(false);
+  }, []);
 
   /** 顶部输入框内容变化：按输入方式打开卡片（不自动聚焦卡片输入框） */
   const handleTopKeywordChange = useCallback((v: string) => {
@@ -124,8 +154,18 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
         }
         return;
       }
-      if (settingsOpen) return;
+      if (settingsOpen || infoOpen) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // `：打开 / 关闭历史侧栏（输入框内不拦截，避免影响正常输入）
+      if (e.key === "`") {
+        const target = e.target as HTMLElement | null;
+        const tag = target?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) return;
+        e.preventDefault();
+        handleToggleSidebar();
+        return;
+      }
 
       // Tab：卡片打开时关闭；关闭时打开并聚焦卡片内输入框
       // 顶部输入框已有内容时保留内容（显示对应搜索结果）并全选，空内容时显示历史
@@ -211,7 +251,7 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
       document.removeEventListener("compositionstart", handleCompositionStart);
       document.removeEventListener("compositionend", handleCompositionEnd);
     };
-  }, [settingsOpen, closeSearchCard, handleKeywordChange, setActiveIndex, setShowResults, setFocusCardOnOpen, findExactName, selectByDbEntry]);
+  }, [settingsOpen, infoOpen, closeSearchCard, handleToggleSidebar, handleKeywordChange, setActiveIndex, setShowResults, setFocusCardOnOpen, findExactName, selectByDbEntry]);
 
   // 键盘打开卡片后，若首个字符没有进入输入框（浏览器未把默认行为重定向到输入框），手动补入
   useEffect(() => {
@@ -253,7 +293,10 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
   }
 
   return (
-    <>
+    <div
+      className={`app-shell${sidebarOpen ? " sidebar-open" : ""}${sidebarResizing ? " resizing" : ""}`}
+      style={{ "--sidebar-w": `${sidebarWidth}px` } as React.CSSProperties}
+    >
       <TopNav
         search={{
           keyword: searchHooks.keyword,
@@ -266,7 +309,32 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
           onSelectItem: searchHooks.handleSelectItem,
           onMoveActive: searchHooks.moveActiveIndex,
         }}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={handleToggleSidebar}
+        themeMode={themeMode}
+        isDark={isDark}
+        onThemeChange={onThemeModeChange}
+      />
+
+      {sidebarOpen && (
+        <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      <HistorySidebar
+        open={sidebarOpen}
+        width={sidebarWidth}
+        sortedHistory={historyHooks.sortedHistory}
+        activeItemId={searchHooks.selectedItem?.row_id ?? null}
+        onSearchFromHistory={searchHooks.searchFromHistory}
+        onRemoveHistory={historyHooks.removeHistory}
+        onClearHistory={historyHooks.clearHistory}
+        onTogglePin={historyHooks.togglePin}
+        onClose={() => setSidebarOpen(false)}
         onOpenSettings={() => setSettingsOpen(true)}
+        onOpenInfo={() => setInfoOpen(true)}
+        onResizeStart={() => setSidebarResizing(true)}
+        onResize={handleSidebarResize}
+        onResizeEnd={handleSidebarResizeEnd}
       />
 
       {/* 居中悬浮搜索卡片 */}
@@ -276,15 +344,10 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
           results={searchHooks.results}
           loading={searchHooks.loading}
           activeIndex={searchHooks.activeIndex}
-          history={historyHooks.sortedHistory}
           focusOnMount={focusCardOnOpen}
           onKeywordChange={searchHooks.handleKeywordChange}
           onSearch={searchHooks.doSearch}
           onSelectItem={searchHooks.handleSelectItem}
-          onSearchFromHistory={searchHooks.searchFromHistory}
-          onRemoveHistory={historyHooks.removeHistory}
-          onClearHistory={historyHooks.clearHistory}
-          onTogglePin={historyHooks.togglePin}
           onMoveActive={searchHooks.moveActiveIndex}
           onActivate={searchHooks.setActiveIndex}
           onClose={closeSearchCard}
@@ -323,18 +386,19 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
           />
         )}
 
-        {/* 设置面板 Drawer */}
-        <SettingsPanel
+        <SettingsDialog
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
-          themeMode={themeMode}
-          onThemeModeChange={onThemeModeChange}
           recordingEnabled={recordingEnabled}
           onRecordingToggle={handleRecordingToggle}
+        />
+        <InfoDialog
+          open={infoOpen}
+          onClose={() => setInfoOpen(false)}
           itemDbVersion={itemDb.version}
         />
       </div>
-    </>
+    </div>
   );
 }
 

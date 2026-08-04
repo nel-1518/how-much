@@ -24,6 +24,18 @@ function MobilePagedList<T>({ items, renderItem }: {
   );
 }
 
+/** 与刷新按钮完全同构的透明占位（隐藏但保留布局），保证两张卡片标题栏高度一致 */
+const headerExtraSpacer = (
+  <Button
+    type="text"
+    size="small"
+    icon={<RedoOutlined />}
+    className="data-card-extra-spacer"
+    aria-hidden="true"
+    tabIndex={-1}
+  />
+);
+
 interface PriceSectionProps {
   selectedItem: ItemResult;
   region: string;
@@ -107,7 +119,11 @@ export function PriceSection({
   );
 
   const historyCard = () => (
-    <Card title={<><HistoryOutlined /> 交易历史</>} size="small" className="data-card">
+    <Card
+      title={<><HistoryOutlined /> 交易历史</>}
+      size="small" className="data-card"
+      extra={headerExtraSpacer}
+    >
       {priceData?.recentHistory?.length ? (
         <>
           <div className="data-table-desktop">

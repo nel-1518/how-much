@@ -85,6 +85,7 @@ const AppWrapper: React.FC = () => {
       <App
         themeMode={themeMode}
         onThemeModeChange={handleThemeModeChange}
+        isDark={isDark}
       />
     </ConfigProvider>
   );

@@ -66,6 +66,13 @@ export const RECORDING_ENABLED_KEY = "ff14_recording_enabled";
 export const REGION_KEY = "ff14_last_region";
 export const DEFAULT_REGION = "中国";
 
+// 历史侧栏
+export const SIDEBAR_OPEN_KEY = "ff14_sidebar_open";
+export const SIDEBAR_WIDTH_KEY = "ff14_sidebar_width";
+export const MIN_SIDEBAR_W = 220;
+export const MAX_SIDEBAR_W = 480;
+export const DEFAULT_SIDEBAR_W = 280;
+
 // 主题设置
 export const THEME_KEY = "ff14_theme_mode";
 export type ThemeMode = "auto" | "light" | "dark";

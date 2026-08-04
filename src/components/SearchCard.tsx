@@ -1,34 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { Input, Typography, Spin, Card } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
-import type { ItemResult, SearchHistoryItem } from "../types";
-import { HistorySection } from "./HistorySection";
+import type { ItemResult } from "../types";
 
 export interface SearchCardProps {
   keyword: string;
   results: ItemResult[];
   loading: boolean;
   activeIndex: number;
-  history: SearchHistoryItem[];
   /** 由 Tab 打开时为 true，自动聚焦卡片内输入框 */
   focusOnMount: boolean;
   onKeywordChange: (v: string) => void;
   onSearch: (query: string) => void;
   onSelectItem: (item: ItemResult) => void;
-  onSearchFromHistory: (item: SearchHistoryItem) => void;
-  onRemoveHistory: (id: number) => void;
-  onClearHistory: () => void;
-  onTogglePin: (id: number) => void;
   onMoveActive: (delta: number) => void;
   onActivate: (index: number) => void;
   onClose: () => void;
 }
 
-/** 居中悬浮搜索卡片：输入框（与顶部同步显示）+ 搜索历史 + 搜索结果 */
+/** 居中悬浮搜索卡片：输入框（与顶部同步显示）+ 搜索结果 */
 export function SearchCard({
-  keyword, results, loading, activeIndex, history, focusOnMount,
-  onKeywordChange, onSearch, onSelectItem, onSearchFromHistory,
-  onRemoveHistory, onClearHistory, onTogglePin, onMoveActive, onActivate, onClose,
+  keyword, results, loading, activeIndex, focusOnMount,
+  onKeywordChange, onSearch, onSelectItem, onMoveActive, onActivate, onClose,
 }: SearchCardProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -103,21 +96,20 @@ export function SearchCard({
   }, [activeIndex, results]);
 
   const trimmed = keyword.trim();
-  const showHistory = trimmed === "";
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "ArrowDown") {
-      if (!showHistory && results.length > 0) {
+      if (results.length > 0) {
         e.preventDefault();
         onMoveActive(1);
       }
     } else if (e.key === "ArrowUp") {
-      if (!showHistory && results.length > 0) {
+      if (results.length > 0) {
         e.preventDefault();
         onMoveActive(-1);
       }
     } else if (e.key === "Enter") {
-      if (!showHistory && results.length > 0 && !loading) {
+      if (results.length > 0 && !loading) {
         e.preventDefault();
         onSelectItem(results[activeIndex]);
       } else {
@@ -155,15 +147,7 @@ export function SearchCard({
         </div>
 
         <div className="search-results" ref={resultsRef}>
-          {showHistory ? (
-            <HistorySection
-              sortedHistory={history}
-              onSearchFromHistory={onSearchFromHistory}
-              onRemoveHistory={onRemoveHistory}
-              onClearHistory={onClearHistory}
-              onTogglePin={onTogglePin}
-            />
-          ) : loading ? (
+          {loading ? (
             <div className="search-loading"><Spin size="small" /><span>搜索中...</span></div>
           ) : results.length > 0 ? (
             <div className="result-list">
@@ -181,7 +165,9 @@ export function SearchCard({
             </div>
           ) : (
             <div className="search-empty">
-              <Typography.Text type="secondary">未找到相关物品，请尝试其他关键词</Typography.Text>
+              <Typography.Text type="secondary">
+                {trimmed === "" ? "输入物品名称开始搜索" : "未找到相关物品，请尝试其他关键词"}
+              </Typography.Text>
             </div>
           )}
         </div>
