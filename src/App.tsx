@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { Button, Tooltip, Spin, Alert } from "antd";
-import { SettingOutlined } from "@ant-design/icons";
+import { Button, Spin, Alert } from "antd";
 import { REGION_KEY, DEFAULT_REGION } from "./constants";
 import type { ThemeMode } from "./constants";
 import { useSearchHistory } from "./hooks/useSearchHistory";
@@ -8,8 +7,7 @@ import { usePriceQuery } from "./hooks/usePriceQuery";
 import { useItemSearch } from "./hooks/useItemSearch";
 import { useItemDatabase } from "./hooks/useItemDatabase";
 import { HeroSection } from "./components/HeroSection";
-import { SearchSection } from "./components/SearchSection";
-import { HistorySection } from "./components/HistorySection";
+import { TopNav } from "./components/TopNav";
 import { PriceSection } from "./components/PriceSection";
 import { SettingsPanel } from "./components/SettingsPanel";
 import {
@@ -77,8 +75,8 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
   }, []);
 
   const handleFocus = useCallback(() => {
-    if (searchHooks.results.length > 0) searchHooks.setShowResults(true);
-  }, [searchHooks.results.length, searchHooks.setShowResults]);
+    searchHooks.setShowResults(true);
+  }, [searchHooks.setShowResults]);
 
   // 物品数据库加载中
   if (itemDb.status === "loading") {
@@ -105,68 +103,60 @@ function App({ themeMode, onThemeModeChange }: AppProps) {
   }
 
   return (
-    <div className={`app-container ${searchHooks.hasSearched ? "searched" : ""}`}>
-      {/* 设置入口 — 固定在右上角 */}
-      <Tooltip title="设置">
-        <Button
-          type="text"
-          className="settings-trigger"
-          icon={<SettingOutlined />}
-          onClick={() => setSettingsOpen(true)}
+    <>
+      <TopNav
+        search={{
+          keyword: searchHooks.keyword,
+          results: searchHooks.results,
+          loading: searchHooks.loading,
+          showResults: searchHooks.showResults,
+          activeIndex: searchHooks.activeIndex,
+          history: historyHooks.sortedHistory,
+          onKeywordChange: searchHooks.handleKeywordChange,
+          onSearch: searchHooks.doSearch,
+          onSelectItem: searchHooks.handleSelectItem,
+          onSearchFromHistory: searchHooks.searchFromHistory,
+          onRemoveHistory: historyHooks.removeHistory,
+          onClearHistory: historyHooks.clearHistory,
+          onTogglePin: historyHooks.togglePin,
+          onMoveActive: searchHooks.moveActiveIndex,
+          onActivate: searchHooks.setActiveIndex,
+          onFocus: handleFocus,
+          onCloseResults: () => searchHooks.setShowResults(false),
+        }}
+        onOpenSettings={() => setSettingsOpen(true)}
+      />
+
+      <div className={`app-container ${searchHooks.hasSearched ? "searched" : ""}`}>
+        {!searchHooks.hasSearched && <HeroSection />}
+
+        {searchHooks.selectedItem && (
+          <PriceSection
+            selectedItem={searchHooks.selectedItem}
+            region={region}
+            onRegionChange={setRegion}
+            priceData={priceHooks.priceData}
+            priceLoading={priceHooks.priceLoading}
+            fetchPriceData={priceHooks.fetchPriceData}
+            refreshPrice={priceHooks.refreshPrice}
+            viewTab={searchHooks.viewTab}
+            onViewTabChange={searchHooks.setViewTab}
+            onWiki={searchHooks.handleWiki}
+            transactionStore={transactionStore}
+          />
+        )}
+
+        {/* 设置面板 Drawer */}
+        <SettingsPanel
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          themeMode={themeMode}
+          onThemeModeChange={onThemeModeChange}
+          recordingEnabled={recordingEnabled}
+          onRecordingToggle={handleRecordingToggle}
         />
-      </Tooltip>
-
-      {!searchHooks.hasSearched && <HeroSection />}
-
-      <SearchSection
-        keyword={searchHooks.keyword}
-        results={searchHooks.results}
-        loading={searchHooks.loading}
-        hasSearched={searchHooks.hasSearched}
-        showResults={searchHooks.showResults}
-        selectedItem={searchHooks.selectedItem}
-        onKeywordChange={searchHooks.handleKeywordChange}
-        onSearch={searchHooks.doSearch}
-        onSelectItem={searchHooks.handleSelectItem}
-        onPasteSearch={searchHooks.handlePasteSearch}
-        onFocus={handleFocus}
-        onCloseResults={() => searchHooks.setShowResults(false)}
-      />
-
-      <HistorySection
-        sortedHistory={historyHooks.sortedHistory}
-        onSearchFromHistory={searchHooks.searchFromHistory}
-        onRemoveHistory={historyHooks.removeHistory}
-        onClearHistory={historyHooks.clearHistory}
-        onTogglePin={historyHooks.togglePin}
-      />
-
-      {searchHooks.selectedItem && (
-        <PriceSection
-          selectedItem={searchHooks.selectedItem}
-          region={region}
-          onRegionChange={setRegion}
-          priceData={priceHooks.priceData}
-          priceLoading={priceHooks.priceLoading}
-          fetchPriceData={priceHooks.fetchPriceData}
-          refreshPrice={priceHooks.refreshPrice}
-          viewTab={searchHooks.viewTab}
-          onViewTabChange={searchHooks.setViewTab}
-          onWiki={searchHooks.handleWiki}
-          transactionStore={transactionStore}
-        />
-      )}
-
-      {/* 设置面板 Drawer */}
-      <SettingsPanel
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        themeMode={themeMode}
-        onThemeModeChange={onThemeModeChange}
-        recordingEnabled={recordingEnabled}
-        onRecordingToggle={handleRecordingToggle}
-      />
-    </div>
+      </div>
+    </>
   );
 }
 

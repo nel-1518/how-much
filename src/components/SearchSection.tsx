@@ -1,75 +1,119 @@
-import { useRef } from "react";
-import { Input, Button, Typography, Spin, Space, Tooltip, Card } from "antd";
-import { SearchOutlined, SnippetsOutlined } from "@ant-design/icons";
-import type { ItemResult } from "../types";
+import { useEffect, useRef } from "react";
+import { Input, Typography, Spin, Space, Card } from "antd";
+import { SearchOutlined } from "@ant-design/icons";
+import type { ItemResult, SearchHistoryItem } from "../types";
 import { useClickOutside } from "../hooks/useClickOutside";
+import { HistorySection } from "./HistorySection";
 
-interface SearchSectionProps {
+export interface SearchSectionProps {
   keyword: string;
   results: ItemResult[];
   loading: boolean;
-  hasSearched: boolean;
   showResults: boolean;
-  selectedItem: ItemResult | null;
+  activeIndex: number;
+  history: SearchHistoryItem[];
   onKeywordChange: (v: string) => void;
   onSearch: (query: string) => void;
   onSelectItem: (item: ItemResult) => void;
-  onPasteSearch: () => void;
+  onSearchFromHistory: (item: SearchHistoryItem) => void;
+  onRemoveHistory: (id: number) => void;
+  onClearHistory: () => void;
+  onTogglePin: (id: number) => void;
+  onMoveActive: (delta: number) => void;
+  onActivate: (index: number) => void;
   onFocus: () => void;
   onCloseResults: () => void;
 }
 
 /** 搜索框 + 自动完成结果列表组件 */
 export function SearchSection({
-  keyword, results, loading, hasSearched, showResults, selectedItem,
-  onKeywordChange, onSearch, onSelectItem, onPasteSearch, onFocus, onCloseResults,
+  keyword, results, loading, showResults, activeIndex,
+  history, onKeywordChange, onSearch, onSelectItem, onSearchFromHistory,
+  onRemoveHistory, onClearHistory, onTogglePin, onMoveActive, onActivate, onFocus, onCloseResults,
 }: SearchSectionProps) {
   const searchRef = useRef<HTMLDivElement>(null);
+  const resultListRef = useRef<HTMLDivElement>(null);
   useClickOutside(searchRef, onCloseResults);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") onSearch(keyword);
+    if (e.key === "ArrowDown") {
+      if (showResults && !showHistory && results.length > 0) {
+        e.preventDefault();
+        onMoveActive(1);
+      }
+    } else if (e.key === "ArrowUp") {
+      if (showResults && !showHistory && results.length > 0) {
+        e.preventDefault();
+        onMoveActive(-1);
+      }
+    } else if (e.key === "Enter") {
+      if (showResults && !showHistory && results.length > 0 && !loading) {
+        e.preventDefault();
+        onSelectItem(results[activeIndex]);
+      } else {
+        onSearch(keyword);
+      }
+    }
   };
 
+  const trimmed = keyword.trim();
+  const showHistory = trimmed === "";
+
+  // 高亮项变化时，确保其在结果列表可视区域内（超出则同步滚动）
+  useEffect(() => {
+    const list = resultListRef.current;
+    const el = list?.querySelector<HTMLElement>(".result-item.active");
+    if (!list || !el) return;
+
+    const listRect = list.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const margin = 8;
+    if (elRect.top < listRect.top + margin) {
+      const target = list.scrollTop - ((listRect.top + margin) - elRect.top);
+      list.scrollTo({ top: target, behavior: "smooth" });
+    } else if (elRect.bottom > listRect.bottom - margin) {
+      const target = list.scrollTop + elRect.bottom - (listRect.bottom - margin);
+      list.scrollTo({ top: target, behavior: "smooth" });
+    }
+  }, [activeIndex, results]);
+
   return (
-    <Card className="search-card" variant="borderless">
+    <Card className={`search-card${showResults ? " open" : ""}`} variant="borderless">
       <Space direction="vertical" style={{ width: "100%", maxWidth: 600 }}>
         <div ref={searchRef} style={{ position: "relative" }}>
-          <Space.Compact style={{ width: "100%" }}>
-            <Input
-              size="large"
-              placeholder="输入物品名称"
-              value={keyword}
-              onChange={(e) => onKeywordChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onFocus={onFocus}
-              prefix={<SearchOutlined />}
-              allowClear
-              autoFocus
-              className="search-input"
-            />
-            <Tooltip title="粘贴并搜索">
-              <Button size="large" icon={<SnippetsOutlined />} onClick={onPasteSearch} />
-            </Tooltip>
-            <Button
-              size="large" type="primary" icon={<SearchOutlined />}
-              onClick={() => onSearch(keyword)} loading={loading}
-            >
-              搜索
-            </Button>
-          </Space.Compact>
+          <Input
+            size="large"
+            placeholder="输入物品名称"
+            value={keyword}
+            onChange={(e) => onKeywordChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={onFocus}
+            prefix={<SearchOutlined className="search-prefix-icon" />}
+            allowClear
+            autoFocus
+            className="search-input"
+          />
 
-          {hasSearched && showResults && (
+          {showResults && (
             <div className="search-results">
-              {loading ? (
+              {showHistory ? (
+                <HistorySection
+                  sortedHistory={history}
+                  onSearchFromHistory={onSearchFromHistory}
+                  onRemoveHistory={onRemoveHistory}
+                  onClearHistory={onClearHistory}
+                  onTogglePin={onTogglePin}
+                />
+              ) : loading ? (
                 <div className="search-loading"><Spin size="small" /><span>搜索中...</span></div>
               ) : results.length > 0 ? (
-                <div className="result-list">
-                  {results.map((item) => (
+                <div className="result-list" ref={resultListRef}>
+                  {results.map((item, index) => (
                     <div
                       key={item.row_id}
-                      className={`result-item ${selectedItem?.row_id === item.row_id ? "active" : ""}`}
+                      className={`result-item ${activeIndex === index ? "active" : ""}`}
                       onClick={() => onSelectItem(item)}
+                      onMouseEnter={() => onActivate(index)}
                     >
                       <span className="result-name">{item.fields.Name}</span>
                       <span className="result-arrow">↵</span>

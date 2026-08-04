@@ -32,7 +32,7 @@ function toItemResult(entry: ItemDbEntry): ItemResult {
 /**
  * 物品搜索 Hook
  * 使用本地物品数据库替代 XIVAPI 搜索
- * 管理搜索状态、结果选取、历史回搜、粘贴搜索、Wiki 跳转
+ * 管理搜索状态、结果选取、历史回搜、Wiki 跳转
  */
 export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice, itemDb }: UseItemSearchParams) {
   const [keyword, setKeyword] = useState("");
@@ -42,24 +42,27 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
   const [showResults, setShowResults] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ItemResult | null>(null);
   const [viewTab, setViewTab] = useState<string>("listings");
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  const doSearch = useCallback(async (query: string) => {
+  /** 执行搜索的核心逻辑（本地数据库同步查询） */
+  const runSearch = useCallback((query: string) => {
     const trimmed = query.trim();
-    if (!trimmed) { message.warning("请输入搜索内容"); return; }
+    if (!trimmed) { setResults([]); return; }
 
     setLoading(true);
     setHasSearched(true);
-    setShowResults(true);
     setSelectedItem(null);
+    setActiveIndex(0);
     clearPrice();
 
-    try {
-      if (!itemDb.ready) {
-        message.warning("物品数据库正在加载，请稍后");
-        setResults([]);
-        return;
-      }
+    if (!itemDb.ready) {
+      message.warning("物品数据库正在加载，请稍后");
+      setResults([]);
+      setLoading(false);
+      return;
+    }
 
+    try {
       const dbResults = itemDb.searchByName(trimmed, 20);
       setResults(dbResults.map(toItemResult));
     } catch {
@@ -68,9 +71,18 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     } finally {
       setLoading(false);
     }
-  }, [clearPrice, region, fetchPriceData, addToHistory, itemDb]);
+  }, [clearPrice, itemDb]);
+
+  /** 回车 / 点击搜索按钮：立即执行，并取消待定的实时搜索 */
+  const doSearch = useCallback((query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) { message.warning("请输入搜索内容"); return; }
+    setShowResults(true);
+    runSearch(trimmed);
+  }, [runSearch]);
 
   const handleSelectItem = useCallback((item: ItemResult) => {
+    setActiveIndex(0);
     setKeyword(item.fields.Name);
     setShowResults(false);
     setSelectedItem(item);
@@ -84,6 +96,7 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     setHasSearched(true);
     setShowResults(true);
     setSelectedItem(null);
+    setActiveIndex(0);
     clearPrice();
 
     // 从本地数据库查找
@@ -118,17 +131,24 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
   const handleKeywordChange = useCallback((value: string) => {
     const c = clean(value);
     setKeyword(c);
-    if (!c.trim()) { setShowResults(false); setResults([]); }
-  }, []);
+    setActiveIndex(0);
+    if (!c.trim()) {
+      setResults([]);
+      setLoading(false);
+      setShowResults(true);
+      return;
+    }
+    setShowResults(true);
+    runSearch(c);
+  }, [runSearch]);
 
-  const handlePasteSearch = useCallback(async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      const c = clean(text).trim();
-      if (!c) { message.warning("剪贴板为空"); return; }
-      doSearch(c);
-    } catch { message.error("读取剪贴板失败，请手动粘贴"); }
-  }, [doSearch]);
+  /** 上下键移动高亮：循环边界夹紧 */
+  const moveActiveIndex = useCallback((delta: number) => {
+    setActiveIndex((prev) => {
+      if (results.length === 0) return prev;
+      return Math.min(Math.max(prev + delta, 0), results.length - 1);
+    });
+  }, [results.length]);
 
   const handleWiki = useCallback((name: string) => {
     window.open(`https://ff14.huijiwiki.com/wiki/物品:${encodeURIComponent(name)}`, "_blank");
@@ -138,12 +158,12 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     keyword,
     results, loading, hasSearched,
     showResults, setShowResults,
+    activeIndex, setActiveIndex, moveActiveIndex,
     selectedItem, setSelectedItem,
     viewTab, setViewTab,
     doSearch,
     handleSelectItem,
     searchFromHistory,
-    handlePasteSearch,
     handleKeywordChange,
     handleWiki,
   };

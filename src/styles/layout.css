@@ -1,9 +1,54 @@
+/* ===== 顶部导航栏 ===== */
+:root {
+  --top-nav-h: 64px;
+}
+
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  height: var(--top-nav-h);
+  display: flex;
+  align-items: flex-start;
+  padding: 12px 16px;
+  background: var(--bg-card);
+  background: color-mix(in srgb, var(--bg-card) 85%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.top-nav.dropdown-open {
+  border-bottom: none;
+}
+
+.top-nav-inner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.top-nav-spacer {
+  width: 40px;
+  flex-shrink: 0;
+}
+
+.top-nav-search {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
 /* ===== 布局容器 ===== */
 .app-container {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 100vh;
+  min-height: calc(100svh - var(--top-nav-h));
   padding: 0 12px 48px;
   max-width: 1400px;
   margin: 0 auto;
@@ -63,20 +108,14 @@
   font-weight: 400;
 }
 
-/* ===== 设置入口按钮 ===== */
+/* ===== 设置入口按钮（导航栏右侧） ===== */
 .settings-trigger {
-  position: fixed !important;
-  top: 12px;
-  right: 12px;
-  z-index: 1000;
+  flex-shrink: 0;
   width: 40px;
   height: 40px;
   border-radius: 12px !important;
   font-size: 20px;
   color: var(--text-secondary) !important;
-  background: var(--bg-card) !important;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border-light) !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -85,12 +124,7 @@
 
 .settings-trigger:hover {
   color: var(--accent) !important;
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-.settings-trigger:active {
-  transform: translateY(0);
+  background: var(--accent-bg) !important;
 }
 
 /* ===== 设置面板 ===== */
@@ -107,6 +141,9 @@
 
 /* ===== 响应式 ===== */
 @media (max-width: 768px) {
+  .top-nav {
+    padding: 12px 10px;
+  }
   .app-container {
     padding: 0 8px 32px;
   }

@@ -27,6 +27,7 @@ export function useItemDatabase() {
 
   // 存储数据的引用（不触发重渲染）
   const itemsRef = useRef<ItemDbEntry[]>([]);
+  const lowerNamesRef = useRef<string[]>([]);
   const idMapRef = useRef<Map<number, ItemDbEntry>>(new Map());
   const readyRef = useRef(false);
 
@@ -34,10 +35,12 @@ export function useItemDatabase() {
     (query: string, limit = 20): ItemDbEntry[] => {
       if (!query.trim() || !readyRef.current) return [];
       const q = query.toLowerCase();
+      const items = itemsRef.current;
+      const names = lowerNamesRef.current;
       const results: ItemDbEntry[] = [];
-      for (const item of itemsRef.current) {
-        if (item.name.toLowerCase().includes(q)) {
-          results.push(item);
+      for (let i = 0; i < items.length; i++) {
+        if (names[i].includes(q)) {
+          results.push(items[i]);
           if (results.length >= limit) break;
         }
       }
@@ -122,10 +125,14 @@ export function useItemDatabase() {
         // 构建索引
         itemsRef.current = data;
         const map = new Map<number, ItemDbEntry>();
+        const lowerNames = new Array<string>(data.length);
+        let nameIdx = 0;
         for (const item of data) {
           map.set(item.id, item);
+          lowerNames[nameIdx++] = item.name.toLowerCase();
         }
         idMapRef.current = map;
+        lowerNamesRef.current = lowerNames;
         readyRef.current = true;
 
         if (!cancelled) {
