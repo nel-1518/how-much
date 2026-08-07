@@ -58,6 +58,9 @@ export const HISTORY_KEY = "ff14_search_history";
 export const HISTORY_PINNED_KEY = "ff14_search_history_pinned";
 export const MAX_HISTORY = 30;
 
+// how-much-history 配套服务地址
+export const HISTORY_API_BASE: string = "https://ffxiv-api.neeeel.com"
+
 // 交易记录本地存储
 export const TRANSACTION_RECORDS_KEY = "ff14_transaction_records";
 export const RECORDING_ENABLED_KEY = "ff14_recording_enabled";

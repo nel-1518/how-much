@@ -42,8 +42,8 @@ interface PriceSectionProps {
   onRegionChange: (v: string) => void;
   priceData: UniversalisResponse | null;
   priceLoading: boolean;
-  fetchPriceData: (id: number, region: string) => void;
-  refreshPrice: (id: number, region: string) => void;
+  fetchPriceData: (id: number, region: string, name?: string) => void;
+  refreshPrice: (id: number, region: string, name?: string) => void;
   viewTab: string;
   onViewTabChange: (v: string) => void;
   onWiki: (name: string) => void;
@@ -65,7 +65,7 @@ export function PriceSection({
   const handleRegionChange = (val: string) => {
     onRegionChange(val);
     localStorage.setItem(REGION_KEY, val);
-    fetchPriceData(selectedItem.row_id, val);
+    fetchPriceData(selectedItem.row_id, val, selectedItem.fields.Name);
   };
 
   const listingCard = (extraIcon = <RedoOutlined />) => (

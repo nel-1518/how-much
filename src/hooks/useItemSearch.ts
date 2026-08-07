@@ -13,7 +13,7 @@ interface ItemDatabase {
 
 interface UseItemSearchParams {
   region: string;
-  fetchPriceData: (itemId: number, regionKey: string) => void;
+  fetchPriceData: (itemId: number, regionKey: string, name?: string) => void;
   addToHistory: (id: number, name: string) => void;
   clearPrice: () => void;
   itemDb: ItemDatabase;
@@ -85,7 +85,7 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     setHasSearched(true);
     setSelectedItem(item);
     setViewTab("listings");
-    fetchPriceData(item.row_id, region);
+    fetchPriceData(item.row_id, region, item.fields.Name);
     addToHistory(item.row_id, item.fields.Name);
   }, [region, fetchPriceData, addToHistory]);
 
@@ -115,7 +115,7 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
       setResults([match]);
       setSelectedItem(match);
       setShowResults(false);
-      fetchPriceData(match.row_id, region);
+      fetchPriceData(match.row_id, region, match.fields.Name);
       if (!item.pinned) addToHistory(item.id, item.name);
     } else {
       // 通过名称回退搜索
