@@ -4,6 +4,7 @@ import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, CopyOutlined, Link
 import type { ItemResult, UniversalisResponse, TransactionStore } from "../types";
 import { listingColumns, historyColumns, renderWorldName, formatTradeTime } from "../columns";
 import { REGION_KEY } from "../constants";
+import { formatPrice, getCurrentPriceFormat } from "../utils/priceFormat";
 import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
 import { PurchaseAdvice } from "./PurchaseAdvice";
 import { StatsChart } from "./StatsChart";
@@ -119,9 +120,9 @@ export function PriceSection({
                   </div>
                   <div className="data-mobile-line">
                     <span className="price-cell">
-                      {item.pricePerUnit.toLocaleString()} <span className="gil-suffix">Gil</span>
+                      {formatPrice(item.pricePerUnit, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
                     </span>
-                    <span className="data-mobile-meta">×{item.quantity} · 总计 {item.total.toLocaleString()} Gil</span>
+                    <span className="data-mobile-meta">×{item.quantity} · 总计 {formatPrice(item.total, getCurrentPriceFormat())} Gil</span>
                   </div>
                 </div>
               )}
@@ -162,7 +163,7 @@ export function PriceSection({
                   </div>
                   <div className="data-mobile-line">
                     <span className="price-cell">
-                      {item.pricePerUnit.toLocaleString()} <span className="gil-suffix">Gil</span>
+                      {formatPrice(item.pricePerUnit, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
                     </span>
                     <span className="data-mobile-meta">数量 ×{item.quantity}</span>
                   </div>

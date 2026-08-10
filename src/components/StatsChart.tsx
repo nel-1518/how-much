@@ -4,6 +4,7 @@ import type { Plugin } from "chart.js";
 import { Empty, Segmented, Spin, message } from "antd";
 import { LineChartOutlined } from "@ant-design/icons";
 import { fetchDailyStats, pickSeries, type DailyStatsResponse, type StatsDay } from "../utils/statsApi";
+import { formatPrice, getCurrentPriceFormat } from "../utils/priceFormat";
 
 /** 时间范围选项：近 7 天 / 15 天 / 30 天 / 半年 / 一年（一年=365 天，规避服务端 366 天上限） */
 const RANGE_OPTIONS = [
@@ -221,7 +222,7 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
               callbacks: {
                 label: (ctx) => {
                   const raw = ctx.raw as number | undefined;
-                  const v = typeof raw === "number" ? raw.toLocaleString() : "-";
+                  const v = typeof raw === "number" ? formatPrice(raw, getCurrentPriceFormat()) : "-";
                   return `${ctx.dataset.label}: ${v}`;
                 },
               },
@@ -235,7 +236,14 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
             y: {
               position: "left",
               title: { display: true, text: "价格 (Gil)", color: textColor },
-              ticks: { color: textColor },
+              ticks: {
+                color: textColor,
+                callback: (value) => {
+                  // 轴刻度应用全局金额格式（避免过长刻度挤压图表）
+                  const num = Number(value);
+                  return Number.isFinite(num) ? formatPrice(num, getCurrentPriceFormat()) : value;
+                },
+              },
               grid: { color: gridColor },
             },
           },

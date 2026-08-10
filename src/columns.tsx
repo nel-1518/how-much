@@ -1,5 +1,6 @@
 import { Tag } from "antd";
 import { WORLD_TO_DC, DC_ICON_MAP } from "./constants";
+import { formatPrice, getCurrentPriceFormat } from "./utils/priceFormat";
 
 /** 渲染服务器名称 + 大区图标 */
 export const renderWorldName = (worldName: string) => {
@@ -52,7 +53,7 @@ export const listingColumns = [
     width: 120,
     render: (v: number) => (
       <span className="price-cell">
-        {v.toLocaleString()} <span className="gil-suffix">Gil</span>
+        {formatPrice(v, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
       </span>
     ),
   },
@@ -70,7 +71,7 @@ export const listingColumns = [
     width: 110,
     render: (v: number) => (
       <span className="total-cell">
-        {v.toLocaleString()} <span className="gil-suffix">Gil</span>
+        {formatPrice(v, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
       </span>
     ),
   },
@@ -106,7 +107,7 @@ export const historyColumns = [
     width: 110,
     render: (v: number) => (
       <span className="price-cell">
-        {v.toLocaleString()} <span className="gil-suffix">Gil</span>
+        {formatPrice(v, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
       </span>
     ),
   },

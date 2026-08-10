@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
-import { Modal, Switch, Space, Typography, Tooltip } from "antd";
+import { Modal, Switch, Space, Typography, Tooltip, Segmented } from "antd";
 import {
   SettingOutlined,
   SaveOutlined,
   ExclamationCircleOutlined,
+  NumberOutlined,
 } from "@ant-design/icons";
-import { TRANSACTION_RECORDS_KEY } from "../constants";
+import { TRANSACTION_RECORDS_KEY, type PriceFormat } from "../constants";
+import { loadPriceFormat, savePriceFormat } from "../utils/priceFormat";
 import type { TransactionStore } from "../types";
 
 interface SettingsDialogProps {
@@ -15,7 +17,12 @@ interface SettingsDialogProps {
   onRecordingToggle: (enabled: boolean) => void;
 }
 
-/** 设置弹窗：交易记录 */
+const PRICE_FORMAT_OPTIONS: { label: string; value: PriceFormat; example: string }[] = [
+  { label: "千分位", value: "comma", example: "1,234,567" },
+  { label: "四位空格", value: "space4", example: "123 4567" },
+];
+
+/** 设置弹窗：交易记录 + 金额显示格式 */
 export function SettingsDialog({
   open,
   onClose,
@@ -24,6 +31,8 @@ export function SettingsDialog({
 }: SettingsDialogProps) {
   const [recordCount, setRecordCount] = useState(0);
   const [recordSize, setRecordSize] = useState(0);
+  // 金额格式：弹窗内部自管（打开时读本地存储，选择即保存；页面重载后生效）
+  const [priceFormat, setPriceFormat] = useState<PriceFormat>(loadPriceFormat);
 
   useEffect(() => {
     if (!open) return;
@@ -94,6 +103,37 @@ export function SettingsDialog({
           </Tooltip>
         </div>
       </div>
+
+      <Typography.Title level={5} style={{ marginTop: 24, marginBottom: 12 }}>
+        <NumberOutlined style={{ marginRight: 6 }} />
+        金额显示格式
+      </Typography.Title>
+      <div className="settings-row">
+        <div className="settings-row-inline">
+          <Space orientation="vertical" size={6}>
+            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+              应用于全部价格显示，刷新后生效
+            </Typography.Text>
+          </Space>
+        </div>
+      </div>
+      <Segmented<PriceFormat>
+        block
+        value={priceFormat}
+        onChange={(v) => {
+          setPriceFormat(v);
+          savePriceFormat(v);
+        }}
+        options={PRICE_FORMAT_OPTIONS.map((o) => ({
+          label: (
+            <div style={{ textAlign: "center", padding: "2px 0" }}>
+              <div style={{ fontSize: 13 }}>{o.label}</div>
+              <div style={{ fontSize: 11, opacity: 0.65 }}>{o.example}</div>
+            </div>
+          ),
+          value: o.value,
+        }))}
+      />
     </Modal>
   );
 }
