@@ -4,7 +4,7 @@ import type { Plugin } from "chart.js";
 import { Empty, Segmented, Spin, message } from "antd";
 import { LineChartOutlined } from "@ant-design/icons";
 import { fetchDailyStats, pickSeries, type DailyStatsResponse, type StatsDay } from "../utils/statsApi";
-import { formatPrice, getCurrentPriceFormat } from "../utils/priceFormat";
+import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
 import { registerHistoryItem } from "../utils/registerHistoryItem";
 
 /** 时间范围选项：近 7 天 / 15 天 / 30 天 / 半年 / 一年（一年=365 天，规避服务端 366 天上限） */

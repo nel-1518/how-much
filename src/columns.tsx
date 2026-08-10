@@ -1,6 +1,6 @@
 import { Tag } from "antd";
 import { WORLD_TO_DC, DC_ICON_MAP } from "./constants";
-import { formatPrice, getCurrentPriceFormat } from "./utils/priceFormat";
+import { formatPrice, getCurrentPriceFormat } from "./utils/formatPrice";
 
 /** 渲染服务器名称 + 大区图标 */
 export const renderWorldName = (worldName: string) => {

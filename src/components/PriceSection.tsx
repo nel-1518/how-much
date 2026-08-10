@@ -4,7 +4,7 @@ import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, CopyOutlined, Link
 import type { ItemResult, UniversalisResponse, TransactionStore } from "../types";
 import { listingColumns, historyColumns, renderWorldName, formatTradeTime } from "../columns";
 import { REGION_KEY } from "../constants";
-import { formatPrice, getCurrentPriceFormat } from "../utils/priceFormat";
+import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
 import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
 import { PurchaseAdvice } from "./PurchaseAdvice";
 import { StatsChart } from "./StatsChart";

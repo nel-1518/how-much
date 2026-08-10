@@ -7,7 +7,7 @@ import {
   NumberOutlined,
 } from "@ant-design/icons";
 import { TRANSACTION_RECORDS_KEY, type PriceFormat } from "../constants";
-import { loadPriceFormat, savePriceFormat } from "../utils/priceFormat";
+import { loadPriceFormat, savePriceFormat } from "../utils/formatPrice";
 import type { TransactionStore } from "../types";
 
 interface SettingsDialogProps {
