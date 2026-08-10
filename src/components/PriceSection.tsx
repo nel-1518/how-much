@@ -6,6 +6,7 @@ import { listingColumns, historyColumns, renderWorldName, formatTradeTime } from
 import { REGION_KEY } from "../constants";
 import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
 import { PurchaseAdvice } from "./PurchaseAdvice";
+import { StatsChart } from "./StatsChart";
 
 /** 移动端分页列表：每页 15 条，数据/标签变化时通过 key 重置回第一页 */
 function MobilePagedList<T>({ items, renderItem }: {
@@ -42,31 +43,44 @@ interface PriceSectionProps {
   onRegionChange: (v: string) => void;
   priceData: UniversalisResponse | null;
   priceLoading: boolean;
-  fetchPriceData: (id: number, region: string, name?: string) => void;
-  refreshPrice: (id: number, region: string, name?: string) => void;
+  fetchPriceData: (id: number, region: string, name?: string, hqOnly?: boolean) => void;
+  refreshPrice: (id: number, region: string, name?: string, hqOnly?: boolean) => void;
   viewTab: string;
   onViewTabChange: (v: string) => void;
   onWiki: (name: string) => void;
   transactionStore: TransactionStore;
+  /** 当前是否为深色主题（统计图配色适配） */
+  isDark: boolean;
 }
 
 /** 查价结果展示组件：物品信息、出售列表、交易历史、购买建议 */
 export function PriceSection({
   selectedItem, region, onRegionChange, priceData, priceLoading,
   fetchPriceData, refreshPrice, viewTab, onViewTabChange, onWiki,
-  transactionStore,
+  transactionStore, isDark,
 }: PriceSectionProps) {
+  // 只看 HQ 开关（物品存在 HQ 品质时才可用）
+  const [hqOnly, setHqOnly] = useState(false);
+
   // 购买建议分析：使用 App 层已保存完成的 transactionStore
   const purchaseAdvice = useMemo(
-    () => analyzePurchaseAdvice(transactionStore, selectedItem.row_id, priceData),
-    [transactionStore, selectedItem.row_id, priceData],
+    () => analyzePurchaseAdvice(transactionStore, selectedItem.row_id, priceData, hqOnly),
+    [transactionStore, selectedItem.row_id, priceData, hqOnly],
   );
 
   const handleRegionChange = (val: string) => {
     onRegionChange(val);
     localStorage.setItem(REGION_KEY, val);
-    fetchPriceData(selectedItem.row_id, val, selectedItem.fields.Name);
+    fetchPriceData(selectedItem.row_id, val, selectedItem.fields.Name, hqOnly);
   };
+
+  /** 只看 HQ 开关：切换后带 hq 参数重新请求 */
+  const handleHqOnlyToggle = (checked: boolean) => {
+    setHqOnly(checked);
+    fetchPriceData(selectedItem.row_id, region, selectedItem.fields.Name, checked);
+  };
+
+  const canBeHq = selectedItem.canBeHq === true;
 
   const listingCard = (extraIcon = <RedoOutlined />) => (
     <Card
@@ -75,7 +89,7 @@ export function PriceSection({
       extra={
         <Tooltip title="刷新价格">
           <Button type="text" size="small" icon={extraIcon}
-            onClick={() => refreshPrice(selectedItem.row_id, region)} loading={priceLoading}
+            onClick={() => refreshPrice(selectedItem.row_id, region, selectedItem.fields.Name, hqOnly)} loading={priceLoading}
           />
         </Tooltip>
       }
@@ -177,7 +191,7 @@ export function PriceSection({
   return (
     <div className="price-area">
       <div className="price-header">
-        <div className="item-info-group">
+        <div className="price-header-left">
           <div
             className="item-name-clickable"
             onClick={() => copyToClipboard(selectedItem.fields.Name, "物品名")}
@@ -215,20 +229,33 @@ export function PriceSection({
             >
               <LinkOutlined /> Wiki
             </Tag>
-
           </div>
         </div>
-        <Segmented
-          value={region} onChange={(v) => handleRegionChange(v as string)}
-          options={[
-            { label: <>中国</>, value: "中国" },
-            { label: <>陆行鸟</>, value: "陆行鸟" },
-            { label: <>莫古力</>, value: "莫古力" },
-            { label: <>猫小胖</>, value: "猫小胖" },
-            { label: <>豆豆柴</>, value: "豆豆柴" },
-          ]}
-          className="region-segmented"
-        />
+        <div className="region-hq-bar">
+          {canBeHq && (
+            <Tooltip title={hqOnly ? "取消只看 HQ，恢复全部品质" : "只看 HQ 品质的交易"}>
+              <Button
+                type={hqOnly ? "primary" : "default"}
+                size="small"
+                className="hq-only-toggle"
+                onClick={() => handleHqOnlyToggle(!hqOnly)}
+              >
+                只看 HQ
+              </Button>
+            </Tooltip>
+          )}
+          <Segmented
+            value={region} onChange={(v) => handleRegionChange(v as string)}
+            options={[
+              { label: <>中国</>, value: "中国" },
+              { label: <>陆行鸟</>, value: "陆行鸟" },
+              { label: <>莫古力</>, value: "莫古力" },
+              { label: <>猫小胖</>, value: "猫小胖" },
+              { label: <>豆豆柴</>, value: "豆豆柴" },
+            ]}
+            className="region-segmented"
+          />
+        </div>
       </div>
 
       <Spin spinning={priceLoading}>
@@ -257,6 +284,14 @@ export function PriceSection({
               {viewTab === "listings" && listingCard(<RedoOutlined />)}
               {viewTab === "history" && historyCard()}
             </div>
+
+            {/* 统计图栏（购买建议上方） */}
+            <StatsChart
+              itemId={selectedItem.row_id}
+              region={region}
+              canBeHq={canBeHq}
+              isDark={isDark}
+            />
 
             {/* 购买建议 */}
             <PurchaseAdvice result={purchaseAdvice} />

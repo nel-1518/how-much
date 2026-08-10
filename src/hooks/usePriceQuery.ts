@@ -13,8 +13,8 @@ export function usePriceQuery() {
   const [priceLoading, setPriceLoading] = useState(false);
   const cache = useRef<Map<string, UniversalisResponse>>(new Map());
 
-  const doFetch = useCallback((itemId: number, regionKey: string, name: string | undefined, count: number, skipCache: boolean) => {
-    const key = `${itemId}-${regionKey}`;
+  const doFetch = useCallback((itemId: number, regionKey: string, name: string | undefined, count: number, skipCache: boolean, hqOnly: boolean) => {
+    const key = `${itemId}-${regionKey}-${hqOnly ? "hq" : "all"}`;
     if (!skipCache) {
       const cached = cache.current.get(key);
       if (cached) { setPriceData(cached); return; }
@@ -26,7 +26,8 @@ export function usePriceQuery() {
     // 每次获取商品信息时，同步向 how-much-history 服务注册该商品（失败不影响查价）
     registerHistoryItem(itemId, name);
     const path = REGION_MAP[regionKey] || "china";
-    fetch(`https://universalis.app/api/v2/${path}/${itemId}?listings=${count}&entries=${count}`)
+    const hqParam = hqOnly ? "&hq=true" : "";
+    fetch(`https://universalis.app/api/v2/${path}/${itemId}?listings=${count}&entries=${count}${hqParam}`)
       .then((r) => r.json())
       .then((d) => { cache.current.set(key, d); setPriceData(d); })
       .catch(() => message.error("查价失败"))
@@ -37,8 +38,8 @@ export function usePriceQuery() {
     priceData,
     priceLoading,
     setPriceData,
-    fetchPriceData: useCallback((id: number, region: string, name?: string) => doFetch(id, region, name, 30, false), [doFetch]),
-    refreshPrice:  useCallback((id: number, region: string, name?: string) => doFetch(id, region, name, 90, true), [doFetch]),
+    fetchPriceData: useCallback((id: number, region: string, name?: string, hqOnly = false) => doFetch(id, region, name, 30, false, hqOnly), [doFetch]),
+    refreshPrice:  useCallback((id: number, region: string, name?: string, hqOnly = false) => doFetch(id, region, name, 90, true, hqOnly), [doFetch]),
     clearPrice:    useCallback(() => { cache.current.clear(); setPriceData(null); }, []),
   };
 }

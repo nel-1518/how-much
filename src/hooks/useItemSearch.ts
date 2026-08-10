@@ -19,13 +19,14 @@ interface UseItemSearchParams {
   itemDb: ItemDatabase;
 }
 
-/** 将本地 ItemDbEntry 包装为 ItemResult */
+/** 将本地 ItemDbEntry 包装为 ItemResult（透传是否存在 HQ 品质） */
 function toItemResult(entry: ItemDbEntry): ItemResult {
   return {
     score: 100,
     sheet: "Item",
     row_id: entry.id,
-    fields: { Name: entry.name, Singular: entry.name },
+    fields: { Name: entry.name },
+    canBeHq: entry.hq === 1,
   };
 }
 

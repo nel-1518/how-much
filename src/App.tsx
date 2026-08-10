@@ -372,6 +372,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
 
         {searchHooks.selectedItem && (
           <PriceSection
+            key={searchHooks.selectedItem.row_id}
             selectedItem={searchHooks.selectedItem}
             region={region}
             onRegionChange={setRegion}
@@ -383,6 +384,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
             onViewTabChange={searchHooks.setViewTab}
             onWiki={searchHooks.handleWiki}
             transactionStore={transactionStore}
+            isDark={isDark}
           />
         )}
 

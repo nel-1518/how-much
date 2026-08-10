@@ -195,18 +195,30 @@ export interface PurchaseAdviceResult {
  * @param store     本地存储的全部交易记录
  * @param itemId    当前物品 ID
  * @param priceData 当前 Universalis API 返回的数据
+ * @param hqOnly    仅统计 HQ 交易（false 统计全部）
  */
 export function analyzePurchaseAdvice(
   store: TransactionStore,
   itemId: number,
   priceData: UniversalisResponse | null,
+  hqOnly = false,
 ): PurchaseAdviceResult {
   const entry = store[String(itemId)];
   const localRecords: UniversalisHistory[] = entry?.records || [];
   // 本地无记录时，用当前 API 返回的交易历史作为替代
   const fallbackRecords = priceData?.recentHistory || [];
-  const records: UniversalisHistory[] = localRecords.length > 0 ? localRecords : fallbackRecords;
-  const currentListings = priceData?.listings || [];
+  // 过滤人偶展示架交易（onMannequin=true；旧数据缺失该字段视为正常交易保留）；
+  // 只看 HQ 时再按品质过滤
+  const filterRecords = (records: UniversalisHistory[]) =>
+    records.filter(
+      (r) => !r.onMannequin && (!hqOnly || r.hq),
+    );
+  const records: UniversalisHistory[] =
+    filterRecords(localRecords.length > 0 ? localRecords : fallbackRecords);
+  // 只统计 HQ 时，挂单也只看 HQ（API 已过滤时全为 HQ，这里兜底）
+  const currentListings = hqOnly
+    ? (priceData?.listings || []).filter((l) => l.hq)
+    : (priceData?.listings || []);
 
   // 无足够数据
   if (currentListings.length === 0) {

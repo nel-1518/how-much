@@ -7,7 +7,7 @@
  * 默认输出到 public/data/ 目录（在项目根目录下运行）
  *
  * 生成文件:
- *   public/data/item-db.json          — 物品数据 [{ id, name, description }]
+ *   public/data/item-db.json          — 物品数据 [{ id, name, description, hq }]
  *   public/data/item-db.version.json  — 版本信息 { version, itemCount, generated }
  *
  * CSV 格式说明:
@@ -17,15 +17,15 @@
  *   - 第4行起: 实际数据
  *
  * 输出:
- *   - 仅保留: id, name
- *   - 过滤: IsUntradable 为 true 的物品将被跳过，名称为空的物品将被跳过
+ *   - 仅保留: id, name, hq（CanBeHq: FALSE=0, TRUE=1）
+ *   - 过滤: IsUntradable 为 true 的物品将被跳过，名称为空的物品将被跳过，ID 为 1 的物品将被跳过
  */
 
 const fs = require('fs');
 const path = require('path');
 
 // ====== 配置 ======
-const TARGET_COLUMNS = ['#', 'Name', 'Description', 'IsUntradable'];
+const TARGET_COLUMNS = ['#', 'Name', 'Description', 'IsUntradable', 'CanBeHq'];
 const CSV_DELIMITER = ',';
 
 // 默认输出路径：脚本位于 scripts/，项目根目录的 public/data/
@@ -191,9 +191,10 @@ function main() {
     const id = fields[columnMap['#']] || '';
     const name = fields[columnMap['Name']] || '';
     const isUntradable = (fields[columnMap['IsUntradable']] || '').trim().toUpperCase() === 'TRUE';
+    const canBeHq = (fields[columnMap['CanBeHq']] || '').trim().toUpperCase() === 'TRUE';
 
-    // 跳过无效行（ID 为空或为 0）
-    if (id === '' || id === '0') continue;
+    // 跳过无效行（ID 为空、为 0 或为 1）
+    if (id === '' || id === '0' || id === '1') continue;
 
     // 跳过不可交易物品
     if (isUntradable) continue;
@@ -204,6 +205,7 @@ function main() {
     items.push({
       id: parseInt(id, 10),
       name,
+      hq: canBeHq ? 1 : 0,
     });
   }
 

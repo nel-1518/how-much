@@ -1,21 +1,12 @@
-// ---- XIVAPI 搜索 ----
-export interface ItemFields {
-  Icon?: { id: number; path: string; path_hr1: string };
-  Name: string;
-  Singular: string;
-}
-
+// ---- 物品搜索结果（由本地物品库生成，结构兼容旧 XIVAPI 搜索） ----
 export interface ItemResult {
   score: number;
   sheet: string;
   row_id: number;
-  fields: ItemFields;
-}
-
-export interface SearchResponse {
-  schema?: string;
-  version?: string;
-  results?: ItemResult[];
+  /** 物品名称 */
+  fields: { Name: string };
+  /** 物品是否存在 HQ 品质（来自本地物品库；非 XIVAPI 字段，可选） */
+  canBeHq?: boolean;
 }
 
 // ---- Universalis 查价 ----
@@ -35,6 +26,8 @@ export interface UniversalisHistory {
   total: number;
   buyerName: string;
   timestamp: number;
+  /** 是否从人偶展示架购买（可能为 null/undefined）；统计时应过滤 */
+  onMannequin?: boolean | null;
 }
 
 export interface UniversalisResponse {
@@ -47,6 +40,8 @@ export interface UniversalisResponse {
 export interface ItemDbEntry {
   id: number;
   name: string;
+  /** 1 = 该物品存在 HQ 品质（可被制作为 HQ），0 = 无 HQ */
+  hq: 0 | 1;
 }
 
 export interface ItemDbVersion {
