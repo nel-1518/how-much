@@ -8,18 +8,20 @@ import {
   ArrowDownOutlined,
   ArrowUpOutlined,
   MinusOutlined,
-  ThunderboltOutlined,
   PercentageOutlined,
+  ThunderboltOutlined,
 } from "@ant-design/icons";
 import type { PurchaseAdviceResult } from "../utils/purchaseAdvice";
 import { fmtPrice } from "../utils/formatPrice";
 
 interface PurchaseAdviceProps {
   result: PurchaseAdviceResult;
+  /** 只看 HQ 时提示"仅参考 HQ 价格" */
+  hqOnly?: boolean;
 }
 
 /** 购买建议展示组件 */
-export function PurchaseAdvice({ result }: PurchaseAdviceProps) {
+export function PurchaseAdvice({ result, hqOnly = false }: PurchaseAdviceProps) {
   const { rating, summary, details } = result;
 
   const config = useMemo(() => {
@@ -107,7 +109,12 @@ export function PurchaseAdvice({ result }: PurchaseAdviceProps) {
     <Card
       className="purchase-advice-card"
       size="small"
-      title={<><ThunderboltOutlined /> 购买建议</>}
+      title={
+        <>
+          <ThunderboltOutlined /> 购买建议
+          {hqOnly && <span className="pa-hq-hint">当前仅参考 HQ 品质的价格数据</span>}
+        </>
+      }
     >
       {/* 评级横幅 */}
       <div

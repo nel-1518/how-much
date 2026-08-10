@@ -1,12 +1,12 @@
 import { useState, useCallback, useEffect, useRef, type ComponentRef } from "react";
 import { flushSync } from "react-dom";
 import { Button, Spin, Alert, type Input } from "antd";
-import { REGION_KEY, DEFAULT_REGION } from "./constants";
 import type { ThemeMode } from "./constants";
 import { useSearchHistory } from "./hooks/useSearchHistory";
 import { usePriceQuery } from "./hooks/usePriceQuery";
 import { useItemSearch } from "./hooks/useItemSearch";
 import { useItemDatabase } from "./hooks/useItemDatabase";
+import { useRegionScope } from "./hooks/useRegionScope";
 import { HeroSection } from "./components/HeroSection";
 import { TopNav } from "./components/TopNav";
 import { SearchCard } from "./components/SearchCard";
@@ -39,7 +39,7 @@ interface AppProps {
 }
 
 function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
-  const [region, setRegion] = useState(() => localStorage.getItem(REGION_KEY) || DEFAULT_REGION);
+  const { scope, dcServer, setScope, selectServer } = useRegionScope();
   const [recordingEnabled, setRecordingEnabled] = useState(loadRecordingEnabled);
   const [transactionStore, setTransactionStore] = useState<TransactionStore>(() => {
     cleanExpiredTransactionRecords();
@@ -58,7 +58,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
   const historyHooks = useSearchHistory();
   const priceHooks = usePriceQuery();
   const searchHooks = useItemSearch({
-    region,
+    region: scope,
     fetchPriceData: priceHooks.fetchPriceData,
     addToHistory: historyHooks.addToHistory,
     clearPrice: priceHooks.clearPrice,
@@ -374,8 +374,10 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
           <PriceSection
             key={searchHooks.selectedItem.row_id}
             selectedItem={searchHooks.selectedItem}
-            region={region}
-            onRegionChange={setRegion}
+            scope={scope}
+            dcServer={dcServer}
+            onScopeChange={setScope}
+            onSelectServer={selectServer}
             priceData={priceHooks.priceData}
             priceLoading={priceHooks.priceLoading}
             fetchPriceData={priceHooks.fetchPriceData}

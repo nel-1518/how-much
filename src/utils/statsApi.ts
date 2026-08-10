@@ -1,4 +1,4 @@
-import { HISTORY_API_BASE } from "../constants";
+import { HISTORY_API_BASE, isWorldName } from "../constants";
 
 /** /api/stats/daily 的每日统计项 */
 export interface StatsDay {
@@ -27,7 +27,7 @@ export interface DailyStatsResponse {
 /**
  * 获取每日平均价统计（how-much-history /api/stats/daily，无鉴权）。
  * @param itemId 物品 ID
- * @param region 大区名（"中国" 表示全服，省略 region 参数）
+ * @param region 查询目标："中国"（全服，省略参数）| 大区名（region=）| 服务器名（world=）
  * @param days   统计最近 N 天（Unix 秒区间）
  */
 export async function fetchDailyStats(
@@ -41,8 +41,10 @@ export async function fetchDailyStats(
   url.searchParams.set("item", String(itemId));
   url.searchParams.set("start", String(start));
   url.searchParams.set("end", String(end));
-  // "中国" = 全服，服务端语义与省略参数一致
-  if (region && region !== "中国") url.searchParams.set("region", region);
+  // "中国" = 全服，服务端语义与省略参数一致；服务器走 world=，大区走 region=
+  if (region && region !== "中国") {
+    url.searchParams.set(isWorldName(region) ? "world" : "region", region);
+  }
 
   let res: Response;
   try {

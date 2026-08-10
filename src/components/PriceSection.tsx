@@ -1,13 +1,15 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Typography, Spin, Segmented, Row, Col, Card, Table, Empty, Button, Tooltip, Tag, message, Pagination } from "antd";
+import { Typography, Skeleton, Segmented, Row, Col, Card, Table, Empty, Button, Tooltip, Tag, message, Pagination } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse, TransactionStore } from "../types";
 import { listingColumns, historyColumns, renderWorldName, formatTradeTime } from "../columns";
-import { REGION_KEY } from "../constants";
+import type { DcName } from "../constants";
+import type { DcServerMap } from "../hooks/useRegionScope";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
 import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
 import { PurchaseAdvice } from "./PurchaseAdvice";
 import { StatsChart } from "./StatsChart";
+import { RegionSelector } from "./RegionSelector";
 
 /** 移动端分页列表：每页 15 条，数据/标签变化时通过 key 重置回第一页 */
 function MobilePagedList<T>({ items, renderItem }: {
@@ -40,8 +42,12 @@ const headerExtraSpacer = (
 
 interface PriceSectionProps {
   selectedItem: ItemResult;
-  region: string;
-  onRegionChange: (v: string) => void;
+  /** 当前查询目标："中国" | 大区名 | 服务器名 */
+  scope: string;
+  /** 各大区记忆的已选服务器 */
+  dcServer: DcServerMap;
+  onScopeChange: (scope: string) => void;
+  onSelectServer: (dc: DcName, world: string) => void;
   priceData: UniversalisResponse | null;
   priceLoading: boolean;
   fetchPriceData: (id: number, region: string, name?: string, hqOnly?: boolean) => void;
@@ -54,11 +60,11 @@ interface PriceSectionProps {
   isDark: boolean;
 }
 
-/** 查价结果展示组件：物品信息、出售列表、交易历史、购买建议 */
+/** 查价结果展示组件：大区/服务器选择栏 + 查价结果 / 价格走势 / 购买建议 三个独立模块 */
 export function PriceSection({
-  selectedItem, region, onRegionChange, priceData, priceLoading,
-  fetchPriceData, refreshPrice, viewTab, onViewTabChange, onWiki,
-  transactionStore, isDark,
+  selectedItem, scope, dcServer, onScopeChange, onSelectServer,
+  priceData, priceLoading, fetchPriceData, refreshPrice,
+  viewTab, onViewTabChange, onWiki, transactionStore, isDark,
 }: PriceSectionProps) {
   // 只看 HQ 开关（物品存在 HQ 品质时才可用）
   const [hqOnly, setHqOnly] = useState(false);
@@ -69,19 +75,25 @@ export function PriceSection({
     [transactionStore, selectedItem.row_id, priceData, hqOnly],
   );
 
-  const handleRegionChange = (val: string) => {
-    onRegionChange(val);
-    localStorage.setItem(REGION_KEY, val);
-    fetchPriceData(selectedItem.row_id, val, selectedItem.fields.Name, hqOnly);
+  const canBeHq = selectedItem.canBeHq === true;
+
+  /** 查询目标变化（"中国"/大区）：更新全局状态并重新查价 */
+  const handleScopeChange = (next: string) => {
+    onScopeChange(next);
+    fetchPriceData(selectedItem.row_id, next, selectedItem.fields.Name, hqOnly);
+  };
+
+  /** 选择某大区下的服务器：更新全局状态并重新查价 */
+  const handleSelectServer = (dc: DcName, world: string) => {
+    onSelectServer(dc, world);
+    fetchPriceData(selectedItem.row_id, world, selectedItem.fields.Name, hqOnly);
   };
 
   /** 只看 HQ 开关：切换后带 hq 参数重新请求 */
   const handleHqOnlyToggle = (checked: boolean) => {
     setHqOnly(checked);
-    fetchPriceData(selectedItem.row_id, region, selectedItem.fields.Name, checked);
+    fetchPriceData(selectedItem.row_id, scope, selectedItem.fields.Name, checked);
   };
-
-  const canBeHq = selectedItem.canBeHq === true;
 
   const listingCard = (extraIcon = <RedoOutlined />) => (
     <Card
@@ -90,12 +102,14 @@ export function PriceSection({
       extra={
         <Tooltip title="刷新价格">
           <Button type="text" size="small" icon={extraIcon}
-            onClick={() => refreshPrice(selectedItem.row_id, region, selectedItem.fields.Name, hqOnly)} loading={priceLoading}
+            onClick={() => refreshPrice(selectedItem.row_id, scope, selectedItem.fields.Name, hqOnly)} loading={priceLoading}
           />
         </Tooltip>
       }
     >
-      {priceData?.listings?.length ? (
+      {priceLoading ? (
+        <Skeleton active paragraph={{ rows: 10 }} title={false} />
+      ) : priceData?.listings?.length ? (
         <>
           <div className="data-table-desktop">
             <Table
@@ -139,7 +153,9 @@ export function PriceSection({
       size="small" className="data-card"
       extra={headerExtraSpacer}
     >
-      {priceData?.recentHistory?.length ? (
+      {priceLoading ? (
+        <Skeleton active paragraph={{ rows: 9 }} title={false} />
+      ) : priceData?.recentHistory?.length ? (
         <>
           <div className="data-table-desktop">
             <Table
@@ -191,6 +207,7 @@ export function PriceSection({
 
   return (
     <div className="price-area">
+      {/* 物品标题 + 信息标签 */}
       <div className="price-header">
         <div className="price-header-left">
           <div
@@ -232,73 +249,60 @@ export function PriceSection({
             </Tag>
           </div>
         </div>
-        <div className="region-hq-bar">
-          {canBeHq && (
-            <Tooltip title={hqOnly ? "取消只看 HQ，恢复全部品质" : "只看 HQ 品质的交易"}>
-              <Button
-                type={hqOnly ? "primary" : "default"}
-                size="small"
-                className="hq-only-toggle"
-                onClick={() => handleHqOnlyToggle(!hqOnly)}
-              >
-                只看 HQ
-              </Button>
-            </Tooltip>
-          )}
-          <Segmented
-            value={region} onChange={(v) => handleRegionChange(v as string)}
-            options={[
-              { label: <>中国</>, value: "中国" },
-              { label: <>陆行鸟</>, value: "陆行鸟" },
-              { label: <>莫古力</>, value: "莫古力" },
-              { label: <>猫小胖</>, value: "猫小胖" },
-              { label: <>豆豆柴</>, value: "豆豆柴" },
-            ]}
-            className="region-segmented"
-          />
-        </div>
       </div>
 
-      <Spin spinning={priceLoading}>
-        {priceData ? (
-          <>
-            {/* 移动端：切换 tabs */}
-            <div className="view-tab-bar">
-              <Segmented
-                value={viewTab} onChange={(v) => onViewTabChange(v as string)}
-                options={[
-                  { label: <><ShoppingCartOutlined /> 出售列表</>, value: "listings" },
-                  { label: <><HistoryOutlined /> 交易历史</>, value: "history" },
-                ]}
-                block
-              />
-            </div>
+      {/* 大区/服务器选择栏 */}
+      <RegionSelector
+        scope={scope}
+        dcServer={dcServer}
+        hqOnly={hqOnly}
+        canBeHq={canBeHq}
+        onScopeChange={handleScopeChange}
+        onSelectServer={handleSelectServer}
+        onHqOnlyChange={handleHqOnlyToggle}
+      />
 
-            {/* 桌面端：双列 */}
-            <Row gutter={[16, 16]} className="data-row-desktop">
-              <Col xs={24} lg={12}>{listingCard()}</Col>
-              <Col xs={24} lg={12}>{historyCard()}</Col>
-            </Row>
+      {/* 模块一：查价结果 */}
+      <section className="price-module">
+        {/* 移动端：切换 tabs */}
+        <div className="view-tab-bar">
+          <Segmented
+            value={viewTab} onChange={(v) => onViewTabChange(v as string)}
+            options={[
+              { label: <><ShoppingCartOutlined /> 出售列表</>, value: "listings" },
+              { label: <><HistoryOutlined /> 交易历史</>, value: "history" },
+            ]}
+            block
+          />
+        </div>
 
-            {/* 移动端：单列切换 */}
-            <div className="data-row-mobile">
-              {viewTab === "listings" && listingCard(<RedoOutlined />)}
-              {viewTab === "history" && historyCard()}
-            </div>
+        {/* 桌面端：双列 */}
+        <Row gutter={[16, 16]} className="data-row-desktop">
+          <Col xs={24} lg={12}>{listingCard()}</Col>
+          <Col xs={24} lg={12}>{historyCard()}</Col>
+        </Row>
 
-            {/* 统计图栏（购买建议上方） */}
-            <StatsChart
-              itemId={selectedItem.row_id}
-              region={region}
-              canBeHq={canBeHq}
-              isDark={isDark}
-            />
+        {/* 移动端：单列切换 */}
+        <div className="data-row-mobile">
+          {viewTab === "listings" && listingCard(<RedoOutlined />)}
+          {viewTab === "history" && historyCard()}
+        </div>
+      </section>
 
-            {/* 购买建议 */}
-            <PurchaseAdvice result={purchaseAdvice} />
-          </>
-        ) : (!priceLoading && <Empty description="暂无数据" />)}
-      </Spin>
+      {/* 模块二：价格走势 */}
+      <section className="price-module">
+        <StatsChart
+          itemId={selectedItem.row_id}
+          region={scope}
+          canBeHq={canBeHq}
+          isDark={isDark}
+        />
+      </section>
+
+      {/* 模块三：购买建议 */}
+      <section className="price-module">
+        <PurchaseAdvice result={purchaseAdvice} hqOnly={hqOnly} />
+      </section>
     </div>
   );
 }

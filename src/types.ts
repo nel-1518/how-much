@@ -32,6 +32,8 @@ export interface UniversalisHistory {
 
 export interface UniversalisResponse {
   itemID?: number;
+  /** 单服务器查询时顶层返回的服务器名（大区/中国查询时可能缺失，条目级 worldName 会补全） */
+  worldName?: string;
   listings?: UniversalisListing[];
   recentHistory?: UniversalisHistory[];
 }

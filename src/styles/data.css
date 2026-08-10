@@ -6,29 +6,51 @@
   animation: fadeInUp 0.45s ease;
 }
 
-/* 统计图栏 */
+/* 三模块：查价结果 / 价格走势 / 购买建议 */
+.price-module {
+  margin-bottom: 18px;
+}
+
+.price-module .stats-chart-card {
+  margin: 0;
+}
+
+.price-module .purchase-advice-card {
+  margin-top: 0;
+}
+
+/* 统计图栏（antd Card：价格走势） */
 .stats-chart-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-light);
-  border-radius: 16px;
-  padding: 12px 16px 16px;
-  margin: 16px 0;
+  border-radius: 16px !important;
+  border: 1px solid var(--border-light) !important;
+  background: var(--bg-card) !important;
   box-shadow: var(--shadow-sm);
+  animation: fadeInUp 0.45s ease;
+}
+.stats-chart-card .ant-card-head {
+  border-bottom: 1px solid var(--border-light) !important;
+  font-weight: 600;
+  font-size: 15px;
+  padding: 10px 16px;
+  min-height: auto;
+}
+.stats-chart-card .ant-card-head-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+}
+.stats-chart-card .ant-card-body {
+  padding: 12px 16px 16px;
 }
 
 .stats-chart-toolbar {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 12px;
-}
-
-.stats-chart-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-h);
-  margin-right: auto;
 }
 
 .stats-chart-body {
@@ -107,13 +129,7 @@
   transform: translateY(-1px);
 }
 
-/* ===== 大区选择 + 只看 HQ 开关 ===== */
-.region-hq-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
+/* ===== 只看 HQ 开关 ===== */
 .hq-only-toggle {
   border-radius: 10px !important;
   font-size: 13px;
@@ -121,43 +137,111 @@
   padding-inline: 12px;
 }
 
-.region-segmented .ant-segmented-item-label {
+/* ===== 大区/服务器选择栏（查价页顶部独立条） ===== */
+.region-selector-bar {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.region-drop-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 4px;
+  height: 32px;
+  padding-inline: 6px;
   font-size: 13px;
   font-weight: 600;
-  line-height: 2;
-  padding: 4px 14px;
-  min-height: 34px;
-  transition: all 0.25s ease;
   color: var(--text);
+  border-color: var(--border-light);
+  transition: color 0.15s ease, background-color 0.15s ease;
+  overflow: hidden;
 }
 
-.region-segmented
-  .ant-segmented-item:not(.ant-segmented-item-selected):hover
-  .ant-segmented-item-label {
+.region-drop-btn:hover {
   color: var(--accent);
+  border-color: var(--accent);
 }
 
-.region-segmented .ant-segmented-item-selected {
-  background: var(--bg-card) !important;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.08),
-    0 1px 2px rgba(0, 0, 0, 0.04) !important;
+.region-drop-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
-.region-segmented .ant-segmented-item-selected .ant-segmented-item-label {
-  color: var(--accent) !important;
-  font-weight: 700;
-}
-
-.region-segmented .ant-segmented-thumb {
+/* 「中国」按钮：固定宽度，与各大区组（主按钮+功能菜单）总宽一致 */
+.china-btn {
+  width: 128px;
   border-radius: 10px !important;
-  background: var(--bg-card) !important;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.08),
-    0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* 大区组：Space.Compact 拆分按钮（主按钮点击切大区 + 功能菜单按钮 hover 选服务器） */
+.region-dc-compact {
+  border-radius: 10px;
+}
+
+.region-dc-compact .region-drop-btn {
+  height: 32px;
+}
+
+.region-dc-main {
+  width: 96px;
+}
+
+.region-dc-more {
+  width: 32px;
+  padding-inline: 0;
+}
+
+.region-drop-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  object-fit: cover;
+}
+
+.region-drop-global-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.region-drop-btn .ant-btn-icon {
+  margin-inline-end: 2px;
+}
+
+/* 服务器名超长时省略号（防御，当前国服名最长 4 字一般不会触发） */
+.region-drop-btn > span:not(.ant-btn-icon) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.region-drop-dc-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.region-drop-dc-item .anticon {
+  color: var(--accent);
+  font-size: 13px;
+}
+
+/* 下拉菜单选中项高亮 */
+.region-selector-dropdown .ant-dropdown-menu-item-selected {
+  font-weight: 600;
 }
 
 /* ===== 数据卡片 ===== */
@@ -460,22 +544,9 @@
 }
 
 @media (max-width: 768px) {
-  .region-segmented .ant-segmented-item-label {
-    font-size: 12px;
-    padding: 4px 10px;
-    min-height: 30px;
-    gap: 3px;
-  }
-  .region-segmented {
-    border-radius: 12px !important;
-    padding: 3px;
-  }
   /* 窄屏下控件组允许换行，避免挤压 */
   .price-header {
     padding: 0 4px;
-  }
-  .region-hq-bar {
-    flex-wrap: wrap;
   }
   .price-header .ant-typography {
     font-size: 18px !important;
@@ -518,6 +589,14 @@
 }
 .purchase-advice-card .ant-card-body {
   padding: 14px 16px 16px;
+}
+
+/* 标题旁小字提示（只看 HQ 时） */
+.pa-hq-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-left: 8px;
 }
 
 /* 评级横幅 */
@@ -653,14 +732,14 @@
 }
 
 @media (max-width: 480px) {
-  .region-segmented .ant-segmented-item-label {
-    font-size: 11px;
-    padding: 3px 7px;
-    min-height: 28px;
-    gap: 2px;
+  .region-drop-btn {
+    font-size: 12px;
+    height: 30px;
+    padding-inline: 6px;
   }
-  .region-segmented .ant-segmented-item {
-    padding: 0 2px;
+  .region-drop-icon {
+    width: 16px;
+    height: 16px;
   }
 }
 

@@ -45,6 +45,30 @@ export const WORLD_TO_DC: Record<string, string> = {
   "红茶川": "豆豆柴",
 };
 
+// 国服大区名（选择器下拉顺序）
+export const DC_NAMES = ["陆行鸟", "莫古力", "猫小胖", "豆豆柴"] as const;
+export type DcName = (typeof DC_NAMES)[number];
+
+// 大区 → 旗下服务器（由 WORLD_TO_DC 反推，保持单一数据源）
+export const DC_WORLDS: Record<DcName, string[]> = (() => {
+  const map: Record<DcName, string[]> = { "陆行鸟": [], "莫古力": [], "猫小胖": [], "豆豆柴": [] };
+  for (const [world, dc] of Object.entries(WORLD_TO_DC)) {
+    const dcName = dc as DcName;
+    if (map[dcName]) map[dcName].push(world);
+  }
+  return map;
+})();
+
+/** 是否为已知服务器名 */
+export function isWorldName(name: string): boolean {
+  return Object.prototype.hasOwnProperty.call(WORLD_TO_DC, name);
+}
+
+/** 服务器所属大区（非服务器返回 undefined） */
+export function dcOfWorld(name: string): DcName | undefined {
+  return WORLD_TO_DC[name] as DcName | undefined;
+}
+
 // 大区 → 图标
 export const DC_ICON_MAP: Record<string, string> = {
   "陆行鸟": area_luxingniao,
@@ -69,6 +93,9 @@ export const RECORDING_ENABLED_KEY = "ff14_recording_enabled";
 // 上次选中大区
 export const REGION_KEY = "ff14_last_region";
 export const DEFAULT_REGION = "中国";
+
+// 各大区记忆的已选服务器（JSON：{ "陆行鸟": "红玉海", ... }，缺省=大区名）
+export const DC_SERVERS_KEY = "ff14_dc_servers";
 
 // 历史侧栏
 export const SIDEBAR_OPEN_KEY = "ff14_sidebar_open";

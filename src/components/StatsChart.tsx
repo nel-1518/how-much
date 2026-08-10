@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Chart } from "chart.js/auto";
 import type { Plugin } from "chart.js";
-import { Empty, Segmented, Spin, message } from "antd";
+import { Card, Empty, Segmented, Spin, message } from "antd";
 import { LineChartOutlined } from "@ant-design/icons";
 import { fetchDailyStats, pickSeries, type DailyStatsResponse, type StatsDay } from "../utils/statsApi";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
-import { registerHistoryItem } from "../utils/registerHistoryItem";
 
 /** 时间范围选项：近 7 天 / 15 天 / 30 天 / 半年 / 一年（一年=365 天，规避服务端 366 天上限） */
 const RANGE_OPTIONS = [
@@ -146,7 +145,8 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
     setQuality(canBeHq ? "hq" : "nq");
   }
 
-  // 数据获取：按 item+region 缓存最大跨度响应；小跨度直接从缓存截取，不重复请求
+  // 数据获取：按 item+region 缓存最大跨度响应；小跨度直接从缓存截取，不重复请求。
+  // 注册由价格走势模块自身触发（后续加回）；目前直接拉取统计，失败降级为空数据展示
   useEffect(() => {
     const cacheKey = `${itemId}-${region}`;
     const cached = cacheRef.current.get(cacheKey);
@@ -160,14 +160,7 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
     let cancelled = false;
     setLoading(true);
     setError(null);
-    // 请求统计前先等待注册：首次注册时服务端会先完成一次历史采集再返回，
-    // 保证 stats 查询不会落在空数据上；重复注册立即返回，仅增加一次小请求。
-    registerHistoryItem(itemId)
-      .catch(() => { /* 注册失败不阻塞统计请求（降级为空数据展示） */ })
-      .then(() => {
-        if (cancelled) return;
-        return fetchDailyStats(itemId, region, rangeDays);
-      })
+    fetchDailyStats(itemId, region, rangeDays)
       .then((data) => {
         if (cancelled || !data) return;
         // 新请求跨度更大（或无缓存）时更新缓存，保留已有的大跨度数据
@@ -324,12 +317,12 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
   const showQualitySwitch = canBeHq;
 
   return (
-    <div className="stats-chart-card">
+    <Card
+      className="stats-chart-card"
+      size="small"
+      title={<><LineChartOutlined /> 价格走势</>}
+    >
       <div className="stats-chart-toolbar">
-        <span className="stats-chart-title">
-          <LineChartOutlined style={{ marginRight: 6 }} />
-          价格走势
-        </span>
         <Segmented<QualityKey>
           value={quality}
           onChange={setQuality}
@@ -364,6 +357,6 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
           <Empty description="暂无统计数据" />
         )}
       </div>
-    </div>
+    </Card>
   );
 }
