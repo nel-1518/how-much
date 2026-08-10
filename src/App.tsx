@@ -47,7 +47,12 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(loadSidebarOpen);
+  // 侧栏初始状态：移动端默认关闭（不继承桌面端记忆）；桌面端记住上次开关状态
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => (typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches)
+      ? false
+      : loadSidebarOpen(),
+  );
   const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
   const [sidebarResizing, setSidebarResizing] = useState(false);
   // 是否由 Tab 打开卡片（决定卡片输入框是否自动聚焦）
@@ -106,7 +111,10 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
   const handleToggleSidebar = useCallback(() => {
     setSidebarOpen((prev) => {
       const next = !prev;
-      saveSidebarOpen(next);
+      // 移动端不持久化（每次进入默认关闭）；桌面端记住开关状态
+      if (!window.matchMedia("(max-width: 768px)").matches) {
+        saveSidebarOpen(next);
+      }
       return next;
     });
   }, []);

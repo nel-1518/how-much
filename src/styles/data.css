@@ -211,8 +211,6 @@
   flex-shrink: 0;
   width: 18px;
   height: 18px;
-  border-radius: 4px;
-  object-fit: cover;
 }
 
 .region-drop-global-icon {
@@ -550,6 +548,10 @@
 }
 
 @media (max-width: 768px) {
+  /* 移动端不显示顶部物品名称（保留 ID/Universalis/Wiki 信息标签） */
+  .item-name-clickable {
+    display: none;
+  }
   /* 窄屏下控件组允许换行，避免挤压 */
   .price-header {
     padding: 0 4px;
