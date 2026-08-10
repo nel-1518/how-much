@@ -42,11 +42,9 @@ export function RegionSelector({
     // 选中项在菜单列表中保持高亮（切换服务器后列表仍显示对应服务器）
     selectedKeys: [scope === dc || dcOf(scope) === dc ? scope : dcServer[dc]],
     onClick: ({ key }) => {
-      if (key === dc) {
-        onScopeChange(dc);
-      } else {
-        onSelectServer(dc, key);
-      }
+      // 选"XX（全大区）"：key===dc，重置该大区记忆为大区名（按钮保持显示大区名）并查询大区；
+      // 选服务器：key=服务器名，记忆该服务器（按钮显示服务器名）并查询该服务器
+      onSelectServer(dc, key);
     },
   });
 

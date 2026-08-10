@@ -25,7 +25,13 @@
   border: 1px solid var(--border-light) !important;
   background: var(--bg-card) !important;
   box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
   animation: fadeInUp 0.45s ease;
+}
+.stats-chart-card:hover {
+  box-shadow: var(--shadow-md);
 }
 .stats-chart-card .ant-card-head {
   border-bottom: 1px solid var(--border-light) !important;
@@ -572,7 +578,13 @@
   background: var(--bg-card) !important;
   box-shadow: var(--shadow-sm);
   margin-top: 16px;
+  transition:
+    box-shadow 0.3s ease,
+    transform 0.3s ease;
   animation: fadeInUp 0.45s ease;
+}
+.purchase-advice-card:hover {
+  box-shadow: var(--shadow-md);
 }
 .purchase-advice-card .ant-card-head {
   border-bottom: 1px solid var(--border-light) !important;

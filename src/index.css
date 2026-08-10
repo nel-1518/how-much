@@ -4,7 +4,7 @@
   --text: #4a4458;
   --text-secondary: #78717f;
   --text-h: #1a1523;
-  --bg: #faf9f7;
+  --bg: #f4f0f0;
   --bg-card: #ffffff;
   --bg-elevated: #f5f3f0;
   --border: #e8e4dd;
@@ -130,11 +130,6 @@
 body {
   margin: 0;
   background: var(--bg);
-  /* 微妙渐变背景 */
-  background-image:
-    radial-gradient(ellipse 80% 60% at 50% -10%, var(--accent-bg), transparent),
-    radial-gradient(ellipse 50% 50% at 80% 50%, var(--gold-bg), transparent);
-  background-attachment: fixed;
   min-height: 100svh;
 }
 
