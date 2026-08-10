@@ -5,6 +5,7 @@ import { Empty, Segmented, Spin, message } from "antd";
 import { LineChartOutlined } from "@ant-design/icons";
 import { fetchDailyStats, pickSeries, type DailyStatsResponse, type StatsDay } from "../utils/statsApi";
 import { formatPrice, getCurrentPriceFormat } from "../utils/priceFormat";
+import { registerHistoryItem } from "../utils/registerHistoryItem";
 
 /** 时间范围选项：近 7 天 / 15 天 / 30 天 / 半年 / 一年（一年=365 天，规避服务端 366 天上限） */
 const RANGE_OPTIONS = [
@@ -159,9 +160,16 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchDailyStats(itemId, region, rangeDays)
-      .then((data) => {
+    // 请求统计前先等待注册：首次注册时服务端会先完成一次历史采集再返回，
+    // 保证 stats 查询不会落在空数据上；重复注册立即返回，仅增加一次小请求。
+    registerHistoryItem(itemId)
+      .catch(() => { /* 注册失败不阻塞统计请求（降级为空数据展示） */ })
+      .then(() => {
         if (cancelled) return;
+        return fetchDailyStats(itemId, region, rangeDays);
+      })
+      .then((data) => {
+        if (cancelled || !data) return;
         // 新请求跨度更大（或无缓存）时更新缓存，保留已有的大跨度数据
         if (!cached || rangeDays > cached.rangeDays) {
           cacheRef.current.set(cacheKey, { rangeDays, resp: data });
