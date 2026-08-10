@@ -1,19 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Chart } from "chart.js/auto";
 import type { Plugin } from "chart.js";
-import { Card, Empty, Segmented, Spin, message } from "antd";
-import { LineChartOutlined } from "@ant-design/icons";
-import { fetchDailyStats, pickSeries, type DailyStatsResponse, type StatsDay } from "../utils/statsApi";
+import { Card, Divider, Empty, Segmented, Spin, message } from "antd";
+import { LineChartOutlined, ThunderboltOutlined, InfoCircleOutlined } from "@ant-design/icons";
+import {
+  fetchDailyStats,
+  pickSeries,
+  pickAdvice,
+  STATS_RANGE_OPTIONS,
+  type DailyStatsResponse,
+  type StatsDay,
+} from "../utils/statsApi";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
+import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
+import { PurchaseAdvice } from "./PurchaseAdvice";
+import type { UniversalisListing } from "../types";
 
-/** 时间范围选项：近 7 天 / 15 天 / 30 天 / 半年 / 一年（一年=365 天，规避服务端 366 天上限） */
-const RANGE_OPTIONS = [
-  { label: "近7天", value: 7 },
-  { label: "近15天", value: 15 },
-  { label: "近30天", value: 30 },
-  { label: "半年", value: 180 },
-  { label: "一年", value: 365 },
-];
+/** 时间范围选项：近30天 / 半年 / 一年（服务端仅支持这三个） */
+const RANGE_OPTIONS = STATS_RANGE_OPTIONS.map((o) => ({ label: o.label, value: o.value }));
 
 type QualityKey = "nq" | "hq" | "all";
 
@@ -22,6 +26,44 @@ function addDay(date: string): string {
   const t = new Date(`${date}T00:00:00Z`);
   t.setUTCDate(t.getUTCDate() + 1);
   return t.toISOString().slice(0, 10);
+}
+
+/**
+ * 线性拟合（最小二乘法）：对一组 (x, y) 点求回归直线 y = a + b·x。
+ * 返回斜率 b 与截距 a；不足 2 个点或 x 无方差时返回 null（无法拟合）。
+ */
+function linearFit(points: Array<{ x: number; y: number }>): { slope: number; intercept: number } | null {
+  if (points.length < 2) return null;
+  const n = points.length;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (const p of points) {
+    sx += p.x; sy += p.y; sxy += p.x * p.y; sxx += p.x * p.x;
+  }
+  const denom = n * sxx - sx * sx;
+  if (denom === 0) return null;
+  const slope = (n * sxy - sx * sy) / denom;
+  const intercept = (sy - slope * sx) / n;
+  return { slope, intercept };
+}
+
+/**
+ * 平均价趋势线：对填充序列中非空日期的 avgPrice 做线性回归，得到一条贯穿整个
+ * 时间范围的直线（每日预测值），用于直观展示价格升降趋势。
+ * 返回与 days 等长的数组（首尾两点有值，其余 null 由 spanGaps 连线成直线）；
+ * 数据不足时返回 null。
+ */
+function fitAvgPriceTrend(days: (StatsDay | null)[]): (number | null)[] | null {
+  const pts: Array<{ x: number; y: number }> = [];
+  for (let i = 0; i < days.length; i++) {
+    const d = days[i];
+    if (d && Number.isFinite(d.avgPrice) && d.avgPrice > 0) {
+      pts.push({ x: i, y: d.avgPrice });
+    }
+  }
+  const fit = linearFit(pts);
+  if (!fit) return null;
+  // 只填首尾两点（按回归线预测值），中间 null 由 spanGaps 连线成一条直线
+  return days.map((_, i) => (i === 0 || i === days.length - 1) ? fit.intercept + fit.slope * i : null);
 }
 
 /**
@@ -52,11 +94,18 @@ interface StatsChartProps {
   canBeHq: boolean;
   /** 当前是否为深色主题（图表配色适配） */
   isDark: boolean;
+  /** 前端查价结果的挂单列表（购买建议用当前挂单价对比；查价未返回时为空） */
+  listings: UniversalisListing[];
+  /** 只看 HQ（购买建议挂单只看 HQ） */
+  hqOnly: boolean;
 }
 
 /** 主题色（与 AppWrapper token 保持一致） */
 const COLOR_PRICE = "#8b5cf6"; // 紫（--accent），平均价主线
 const COLOR_PRICE_DARK = "#a78bfa";
+// 趋势线（线性拟合）：橙色调，与紫色平均价主线区分，直观体现升降方向
+const COLOR_TREND = "#f59e0b";
+const COLOR_TREND_DARK = "#fbbf24";
 // 最高/最低价区间线：灰色系并减淡（与紫色主线形成层次）
 const COLOR_RANGE_LIGHT = "rgba(120,113,127,0.2)";
 const COLOR_RANGE_DARK = "rgba(176,174,184,0.25)";
@@ -71,6 +120,33 @@ const TEXT_DARK = "#b0aeb8";
 const WEEKEND_LINE_LIGHT = "rgba(120,113,127,0.35)";
 const WEEKEND_LINE_DARK = "rgba(176,174,184,0.35)";
 let weekendLineColor = WEEKEND_LINE_LIGHT;
+// 从左到右渐显动画进度（0~1）：仅数据变化触发的渐显动画更新，revealPlugin 按进度裁剪数据线区域
+let revealProgress = 1;
+// 是否有一次渐显动画在途（数据变化时置 true，完成后置 false）
+// 用于区分“数据变化动画”与 hover 等触发的 active 动画，避免 hover 反复重播渐显
+let revealPending = false;
+
+/**
+ * 自定义插件：数据线从左到右逐渐出现。
+ * beforeDatasetsDraw 按当前动画进度裁剪图表区域左侧，afterDatasetsDraw 恢复，
+ * 使坐标轴/网格/周末分隔线保持完整，只有折线（数据）随进度从左到右展开。
+ */
+const revealPlugin: Plugin = {
+  id: "revealLeftToRight",
+  beforeDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    const area = chart.chartArea;
+    if (!area || revealProgress >= 1) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(area.left, area.top, (area.right - area.left) * revealProgress, area.bottom - area.top);
+    ctx.clip();
+  },
+  afterDatasetsDraw(chart) {
+    if (revealProgress >= 1) return;
+    chart.ctx.restore();
+  },
+};
 
 /**
  * 自定义插件：在周六/周日刻度位置画垂直虚线，区分工作日与周末。
@@ -104,34 +180,19 @@ const weekendSeparatorPlugin: Plugin = {
 };
 
 /**
- * 从较大跨度的响应中截取最近 N 天（东八区日期过滤，与服务端聚合口径一致）。
- * 用于缓存复用：已缓存 365 天时选 7/15/30 天无需再次请求。
- */
-function sliceDays(resp: DailyStatsResponse, rangeDays: number): DailyStatsResponse {
-  // 东八区当前时间（与 stats.ts CN_OFFSET_MS 一致）
-  const now = new Date(Date.now() + 8 * 3600_000);
-  now.setUTCDate(now.getUTCDate() - rangeDays);
-  const cutoff = now.toISOString().slice(0, 10);
-  return {
-    ...resp,
-    series: resp.series.map((s) => ({
-      ...s,
-      days: s.days.filter((d) => d.date >= cutoff),
-    })),
-  };
-}
-
-/**
- * 统计图栏：最高/最低价区间带 + 平均价主线，数据来自 /api/stats/daily。
- * - 时间范围：近7天/15天/30天/半年/一年
+ * 价格走势 + 购买建议合并模块：最高/最低价区间带 + 平均价主线 + 趋势线，
+ * 数据来自 /api/stats/daily（服务端收到请求时自动注册并采集）。
+ * - 时间范围：近30天 / 半年 / 一年（服务端仅支持）
  * - 品质：hq=0 固定 nq；hq=1 默认 hq，可切换 nq/hq/all（切换不重新请求）
- * - 缓存：按 item+region 缓存最大跨度响应；选更小跨度时直接截取复用（跨度更大才重新请求）
+ * - 缓存：按 item+region+range 分别缓存完整响应（含对应 range 的 advice）；
+ *   切换 range 时命中缓存直接使用，不重复请求（每个 range 首次请求一次）
+ * - 购买建议：历史统计来自服务端 advice（当前品质/range），当前挂单来自前端查价 listings，动态更新
  */
-export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps) {
+export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }: StatsChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
-  const cacheRef = useRef<Map<string, { rangeDays: number; resp: DailyStatsResponse }>>(new Map());
-  const [rangeDays, setRangeDays] = useState(7);
+  const cacheRef = useRef<Map<string, DailyStatsResponse>>(new Map());
+  const [rangeDays, setRangeDays] = useState(30);
   const [quality, setQuality] = useState<QualityKey>(canBeHq ? "hq" : "nq");
   const [resp, setResp] = useState<DailyStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -145,14 +206,14 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
     setQuality(canBeHq ? "hq" : "nq");
   }
 
-  // 数据获取：按 item+region 缓存最大跨度响应；小跨度直接从缓存截取，不重复请求。
-  // 注册由价格走势模块自身触发（后续加回）；目前直接拉取统计，失败降级为空数据展示
+  // 数据获取：按 item+region+range 分别缓存完整响应（含对应 range 的 advice）。
+  // 切换 range 时命中缓存直接使用（每个 range 首次请求一次），不再请求。
+  // 注册由服务端 /api/stats/daily 收到请求时自动执行（首次注册并采集）。
   useEffect(() => {
-    const cacheKey = `${itemId}-${region}`;
+    const cacheKey = `${itemId}-${region}-${rangeDays}`;
     const cached = cacheRef.current.get(cacheKey);
-    // 缓存跨度 >= 当前跨度：直接截取最近 N 天复用
-    if (cached && cached.rangeDays >= rangeDays) {
-      setResp(sliceDays(cached.resp, rangeDays));
+    if (cached) {
+      setResp(cached);
       setError(null);
       setLoading(false);
       return;
@@ -163,10 +224,7 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
     fetchDailyStats(itemId, region, rangeDays)
       .then((data) => {
         if (cancelled || !data) return;
-        // 新请求跨度更大（或无缓存）时更新缓存，保留已有的大跨度数据
-        if (!cached || rangeDays > cached.rangeDays) {
-          cacheRef.current.set(cacheKey, { rangeDays, resp: data });
-        }
+        cacheRef.current.set(cacheKey, data);
         setResp(data);
         setLoading(false);
       })
@@ -186,6 +244,22 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
   const filled = useMemo(() => fillDailySeries(pickSeries(resp, quality)), [resp, quality]);
   const days = filled.days;
   const hasData = resp !== null && filled.labels.length > 0 && days.some((d) => d !== null);
+
+  // 平均价趋势线（线性回归拟合）：随时间范围/品质变化自动重算
+  const trendData = useMemo(() => fitAvgPriceTrend(days), [days]);
+
+  // 购买建议：历史统计来自服务端 advice（当前品质，随 range/区服变化），
+  // 当前挂单来自前端查价 listings（动态更新，两者无先后依赖，任一方变化即重算）
+  const adviceStats = useMemo(() => pickAdvice(resp, quality), [resp, quality]);
+  const purchaseAdvice = useMemo(
+    () => analyzePurchaseAdvice(adviceStats, listings, hqOnly),
+    [adviceStats, listings, hqOnly],
+  );
+  // 首次注册且暂无数据时提示"数据采集中"
+  const showCollectingHint = resp?.firstRegistration === true && adviceStats?.recordCount === 0;
+
+  // 记录上一次填充数据引用：仅数据变化时触发从左到右渐显（主题切换不重放动画）
+  const prevFilledRef = useRef(filled);
 
   // 图表实例：创建 + 数据更新 + 销毁
   useEffect(() => {
@@ -210,11 +284,41 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
       chartRef.current = new Chart(canvas, {
         type: "line",
         data: { labels: [], datasets: [] },
-        plugins: [weekendSeparatorPlugin],
+        plugins: [weekendSeparatorPlugin, revealPlugin],
         options: {
           responsive: true,
           maintainAspectRatio: false,
           interaction: { mode: "index", intersect: false },
+          // 动画：数据线从左到右逐渐出现。onProgress 仅在 revealPending（数据变化）时更新裁剪进度，
+          // hover 等触发的 active 动画不会改变 revealProgress，避免反复重播渐显
+          animation: {
+            duration: 800,
+            easing: "easeOutQuart",
+            delay: () => 0,
+            onProgress: (event) => {
+              if (revealPending && event.numSteps > 0) {
+                revealProgress = event.currentStep / event.numSteps;
+              }
+            },
+            onComplete: () => {
+              if (revealPending) {
+                revealProgress = 1;
+                revealPending = false;
+              }
+            },
+          },
+          // 关闭 x 横向位移动画（渐显由裁剪实现），仅保留纵向数值过渡
+          animations: {
+            x: false,
+            y: { duration: 800, easing: "easeOutQuart" },
+            colors: false,
+            radius: false,
+          },
+          // 图例隐藏/显示数据集：show/hide 过渡动画时长为 0（瞬时消失/出现，不做颜色淡出淡入）
+          transitions: {
+            show: { animation: { duration: 0 } },
+            hide: { animation: { duration: 0 } },
+          },
           plugins: {
             legend: {
               labels: { color: textColor, boxWidth: 12, boxHeight: 12 },
@@ -254,6 +358,12 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
 
     const chart = chartRef.current;
     const days = filled.days;
+    // 数据引用变化 → 开启渐显动画（revealPending）并重置进度；主题切换（filled 不变）不重放
+    if (prevFilledRef.current !== filled) {
+      prevFilledRef.current = filled;
+      revealPending = true;
+      revealProgress = 0;
+    }
     if (days.length === 0) {
       chart.data.labels = [];
       chart.data.datasets = [];
@@ -301,10 +411,25 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
           fill: false,
           yAxisID: "y",
         },
+        // 趋势线（线性拟合）：首尾两点由 spanGaps 连线成一条直线
+        ...(trendData ? [{
+          type: "line" as const,
+          label: "趋势线",
+          data: trendData,
+          borderColor: isDark ? COLOR_TREND_DARK : COLOR_TREND,
+          borderWidth: 2,
+          borderDash: [6, 4],
+          backgroundColor: "transparent",
+          pointRadius: 0,
+          tension: 0,
+          spanGaps: true,
+          fill: false,
+          yAxisID: "y",
+        }] : []),
       ];
     }
     chart.update();
-  }, [filled, isDark]);
+  }, [filled, isDark, trendData]);
 
   // 卸载销毁，防内存泄漏
   useEffect(() => {
@@ -357,6 +482,18 @@ export function StatsChart({ itemId, region, canBeHq, isDark }: StatsChartProps)
           <Empty description="暂无统计数据" />
         )}
       </div>
+
+      {/* 购买建议区（与走势合并，随品质/range/查价挂单动态更新） */}
+      <Divider className="stats-chart-divider" />
+      {showCollectingHint && (
+        <div className="pa-collecting-hint">
+          <InfoCircleOutlined /> 首次查看，数据采集中，稍后刷新可查看完整统计
+        </div>
+      )}
+      <div className="stats-advice-title">
+        <ThunderboltOutlined /> 购买建议
+      </div>
+      <PurchaseAdvice result={purchaseAdvice} hqOnly={hqOnly} />
     </Card>
   );
 }

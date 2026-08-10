@@ -1,13 +1,11 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Typography, Skeleton, Segmented, Row, Col, Card, Table, Empty, Button, Tooltip, Tag, message, Pagination } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
-import type { ItemResult, UniversalisResponse, TransactionStore } from "../types";
+import type { ItemResult, UniversalisResponse } from "../types";
 import { listingColumns, historyColumns, renderWorldName, formatTradeTime } from "../columns";
 import type { DcName } from "../constants";
 import type { DcServerMap } from "../hooks/useRegionScope";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
-import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
-import { PurchaseAdvice } from "./PurchaseAdvice";
 import { StatsChart } from "./StatsChart";
 import { RegionSelector } from "./RegionSelector";
 
@@ -55,25 +53,18 @@ interface PriceSectionProps {
   viewTab: string;
   onViewTabChange: (v: string) => void;
   onWiki: (name: string) => void;
-  transactionStore: TransactionStore;
   /** 当前是否为深色主题（统计图配色适配） */
   isDark: boolean;
 }
 
-/** 查价结果展示组件：大区/服务器选择栏 + 查价结果 / 价格走势 / 购买建议 三个独立模块 */
+/** 查价结果展示组件：大区/服务器选择栏 + 查价结果 / 价格走势与购买建议 */
 export function PriceSection({
   selectedItem, scope, dcServer, onScopeChange, onSelectServer,
   priceData, priceLoading, fetchPriceData, refreshPrice,
-  viewTab, onViewTabChange, onWiki, transactionStore, isDark,
+  viewTab, onViewTabChange, onWiki, isDark,
 }: PriceSectionProps) {
   // 只看 HQ 开关（物品存在 HQ 品质时才可用）
   const [hqOnly, setHqOnly] = useState(false);
-
-  // 购买建议分析：使用 App 层已保存完成的 transactionStore
-  const purchaseAdvice = useMemo(
-    () => analyzePurchaseAdvice(transactionStore, selectedItem.row_id, priceData, hqOnly),
-    [transactionStore, selectedItem.row_id, priceData, hqOnly],
-  );
 
   const canBeHq = selectedItem.canBeHq === true;
 
@@ -289,19 +280,16 @@ export function PriceSection({
         </div>
       </section>
 
-      {/* 模块二：价格走势 */}
+      {/* 模块二：价格走势与购买建议（合并，建议历史统计来自服务端，挂单来自查价） */}
       <section className="price-module">
         <StatsChart
           itemId={selectedItem.row_id}
           region={scope}
           canBeHq={canBeHq}
           isDark={isDark}
+          listings={priceData?.listings ?? []}
+          hqOnly={hqOnly}
         />
-      </section>
-
-      {/* 模块三：购买建议 */}
-      <section className="price-module">
-        <PurchaseAdvice result={purchaseAdvice} hqOnly={hqOnly} />
       </section>
     </div>
   );

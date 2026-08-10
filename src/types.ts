@@ -60,12 +60,4 @@ export interface SearchHistoryItem {
   pinned?: boolean;
 }
 
-// ---- 本地存储的交易记录 ----
-export interface TransactionStore {
-  [itemId: string]: {
-    name: string;
-    records: UniversalisHistory[];
-  };
-}
-
 

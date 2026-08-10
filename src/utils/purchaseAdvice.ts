@@ -1,189 +1,57 @@
-import type { UniversalisHistory, UniversalisResponse } from "../types";
-import type { TransactionStore } from "../types";
+﻿import type { UniversalisListing } from "../types";
+import type { AdviceStats } from "./statsApi";
 
 // 市场板购买手续费 5%
 const TAX_RATE = 0.05;
-
-// ======================== 统计工具函数 ========================
-
-/** 排序后百分位值（线性插值） */
-function percentile(sorted: number[], p: number): number {
-  if (sorted.length === 0) return 0;
-  if (sorted.length === 1) return sorted[0];
-  const idx = (p / 100) * (sorted.length - 1);
-  const lo = Math.floor(idx);
-  const hi = Math.ceil(idx);
-  return lo === hi ? sorted[lo] : sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
-}
-
-/**
- * 时间衰减加权 25% 分位数参考价
- * 1. 数据预处理：仅保留最近 72 小时交易
- * 2. 异常值过滤：剔除左右两侧各 10% 的极端价格
- * 3. 时间衰减加权：weight = exp(-λ × Δt)，半衰期 12 小时
- * 4. 计算加权 25% 分位数作为参考价
- */
-function timeDecayWeightedP25(records: UniversalisHistory[]): number {
-  if (records.length === 0) return 0;
-
-  const now = Date.now() / 1000;
-  const SECONDS_72H = 72 * 60 * 60;
-  const LAMBDA = Math.LN2 / (12 * 3600); // 半衰期 12 小时
-
-  // Step 1: 仅保留最近 72 小时交易
-  const recent = records.filter((r) => now - r.timestamp <= SECONDS_72H);
-  if (recent.length < 3) return 0;
-
-  // Step 2: 按价格排序，剔除左右两侧各 10%
-  const sorted = [...recent].sort((a, b) => a.pricePerUnit - b.pricePerUnit);
-  const trimCount = Math.max(1, Math.floor(sorted.length * 0.1));
-  const trimmed = sorted.slice(trimCount, sorted.length - trimCount);
-  if (trimmed.length === 0) return 0;
-
-  // Step 3 & 4: 计算时间衰减权重，求加权 25% 分位数
-  const weighted = trimmed.map((r) => ({
-    price: r.pricePerUnit,
-    weight: Math.exp(-LAMBDA * (now - r.timestamp)),
-  }));
-
-  // 按价格升序排列（确保有序）
-  weighted.sort((a, b) => a.price - b.price);
-
-  const totalWeight = weighted.reduce((s, w) => s + w.weight, 0);
-  const targetWeight = totalWeight * 0.25;
-
-  // 线性插值找加权 P25
-  let cumWeight = 0;
-  for (let i = 0; i < weighted.length; i++) {
-    const prevCum = cumWeight;
-    cumWeight += weighted[i].weight;
-    if (cumWeight >= targetWeight) {
-      if (i === 0 || prevCum === 0) return weighted[i].price;
-      // 线性插值
-      const ratio = (targetWeight - prevCum) / (cumWeight - prevCum);
-      return weighted[i - 1].price + (weighted[i].price - weighted[i - 1].price) * ratio;
-    }
-  }
-
-  return weighted[weighted.length - 1].price;
-}
-
-/** 标准差 */
-function stdDev(prices: number[], mean: number): number {
-  if (prices.length < 2) return 0;
-  const sqDiffs = prices.map((v) => (v - mean) ** 2);
-  return Math.sqrt(sqDiffs.reduce((a, b) => a + b, 0) / (prices.length - 1));
-}
-
-/**
- * 指数加权移动平均（EWMA）
- * @param records 按时间正序排列（旧→新）
- * @param halflife 半衰期（天），默认 7 天
- */
-function ewma(records: UniversalisHistory[], halflifeDays = 7): number {
-  if (records.length === 0) return 0;
-  const now = Date.now() / 1000;
-  const halflifeSec = halflifeDays * 24 * 60 * 60;
-  let totalWeight = 0;
-  let weightedSum = 0;
-  for (const r of records) {
-    const age = now - r.timestamp;
-    const w = Math.pow(0.5, age / halflifeSec);
-    totalWeight += w;
-    weightedSum += r.pricePerUnit * w;
-  }
-  return totalWeight > 0 ? weightedSum / totalWeight : 0;
-}
-
-/**
- * 价格密度聚类：找历史成交最密集的价位区间
- * 返回 [lo, hi] 主流成交价位带
- */
-function priceDensityBand(sorted: number[]): [number, number] {
-  if (sorted.length < 4) {
-    return sorted.length > 0 ? [sorted[0], sorted[sorted.length - 1]] : [0, 0];
-  }
-  const q1 = percentile(sorted, 25);
-  const q3 = percentile(sorted, 75);
-  return [q1, q3];
-}
-
-/**
- * 趋势检验：比较近期 vs 远期（基于指数加权均值）
- * 比简单分两段更平滑，不易被单日异常值干扰
- */
-function detectTrend(
-  records: UniversalisHistory[],
-  sortedPrices: number[],
-): "down" | "up" | "stable" {
-  if (records.length < 5) return "stable";
-
-  // 按时间正序
-  const sortedByTime = [...records].sort((a, b) => a.timestamp - b.timestamp);
-  const recentEwma = ewma(sortedByTime, 3);      // 近3天半衰期，捕捉近期
-  const longEwma = ewma(sortedByTime, 15);        // 15天半衰期，反映中期水平（历史记录最长30天）
-
-  // 用变异系数判断波动是否太大，波动大时趋势不可信
-  const mean = sortedPrices.reduce((a, b) => a + b, 0) / sortedPrices.length;
-  const cv = mean > 0 ? stdDev(sortedPrices, mean) / mean : 0;
-
-  // 高波动时放宽阈值
-  const threshold = cv > 0.3 ? 0.1 : 0.05;
-  const ratio = (recentEwma - longEwma) / longEwma;
-
-  if (ratio < -threshold) return "down";
-  if (ratio > threshold) return "up";
-  return "stable";
-}
 
 // ======================== 类型定义 ========================
 
 /** 购买建议评估结果 */
 export interface PurchaseAdviceResult {
-  /** 推荐等级: buy-推荐购买 / watch-谨慎观望 / avoid-不推荐 */
+  /** 推荐等级: buy-推荐购买 / watch-谨慎观望 / avoid-不推荐 / insufficient-数据不足 */
   rating: "buy" | "watch" | "avoid" | "insufficient";
   /** 一句话摘要 */
   summary: string;
-  /** 详细分析数据 */
+  /** 详细分析数据（历史维度来自服务端 advice，挂单维度来自前端查价） */
   details: {
-    /** 当前最低挂单价（来自 API） */
+    /** 当前最低挂单价（来自前端查价 listings） */
     currentLowestPrice: number;
     /** 含5%手续费的实付价 */
     effectiveBuyPrice: number;
-    /** 时间衰减加权 P25 参考价（近72h + 10%双边截尾 + 时间衰减 + 加权P25） */
+    /** 时间衰减加权 P25 参考价（服务端） */
     weightedRefPrice: number;
-    /** EWMA 指数加权均价（近期权重更高） */
+    /** EWMA 指数加权均价（服务端） */
     ewmaPrice: number;
-    /** 历史成交价中位数 */
+    /** 历史成交价中位数（服务端） */
     historicalMedianPrice: number;
-    /** 历史最低成交价 */
+    /** 历史最低成交价（服务端） */
     historicalLowestPrice: number;
-    /** 历史最低价的那笔交易详情 */
+    /** 历史最低价的那笔交易详情（服务端） */
     lowestPriceRecord?: {
       worldName: string;
       buyerName: string;
       timestamp: number;
       hq: boolean;
     };
-    /** 历史最高成交价 */
+    /** 历史最高成交价（服务端） */
     historicalHighestPrice: number;
-    /** P25 百分位（主流成交价位下限） */
+    /** P25 百分位（主流成交价位下限，服务端） */
     percentile25: number;
-    /** P75 百分位（主流成交价位上限） */
+    /** P75 百分位（主流成交价位上限，服务端） */
     percentile75: number;
     /** 实付价与参考价的比值 */
     priceRatio: number;
     /** 节省百分比（相对于参考价） */
     savingsPercent: number;
-    /** 本地存储的历史记录条数 */
+    /** 服务端历史记录条数（当前 range/品质） */
     recordCount: number;
-    /** 近7天成交笔数 */
+    /** 近7天成交笔数（服务端） */
     recentWeekCount: number;
-    /** 价格趋势 */
+    /** 价格趋势（服务端） */
     trend: "down" | "up" | "stable";
-    /** 变异系数 CV */
+    /** 变异系数 CV（服务端） */
     cv: number;
-    /** 标准差 */
+    /** 标准差（服务端） */
     stdDev: number;
   };
 }
@@ -191,36 +59,24 @@ export interface PurchaseAdviceResult {
 // ======================== 主分析函数 ========================
 
 /**
- * 分析是否值得购买
- * @param store     本地存储的全部交易记录
- * @param itemId    当前物品 ID
- * @param priceData 当前 Universalis API 返回的数据
- * @param hqOnly    仅统计 HQ 交易（false 统计全部）
+ * 分析是否值得购买（纯前端评级）。
+ * 历史统计维度由服务端 /api/stats/daily 返回的 advice 提供（按当前 range/品质/区服），
+ * 当前挂单维度由前端查价结果（listings）提供；两者无先后依赖，任一方更新后重新调用即可。
+ *
+ * @param statsAdvice 服务端返回的当前品质购买建议统计（可能为 null=统计未返回）
+ * @param listings    前端查价结果的挂单列表（可能为空=查价未返回或无挂单）
+ * @param hqOnly      仅统计 HQ 交易（挂单只看 HQ，服务端 advice 已按品质计算）
  */
 export function analyzePurchaseAdvice(
-  store: TransactionStore,
-  itemId: number,
-  priceData: UniversalisResponse | null,
+  statsAdvice: AdviceStats | null,
+  listings: UniversalisListing[],
   hqOnly = false,
 ): PurchaseAdviceResult {
-  const entry = store[String(itemId)];
-  const localRecords: UniversalisHistory[] = entry?.records || [];
-  // 本地无记录时，用当前 API 返回的交易历史作为替代
-  const fallbackRecords = priceData?.recentHistory || [];
-  // 过滤人偶展示架交易（onMannequin=true；旧数据缺失该字段视为正常交易保留）；
-  // 只看 HQ 时再按品质过滤
-  const filterRecords = (records: UniversalisHistory[]) =>
-    records.filter(
-      (r) => !r.onMannequin && (!hqOnly || r.hq),
-    );
-  const records: UniversalisHistory[] =
-    filterRecords(localRecords.length > 0 ? localRecords : fallbackRecords);
-  // 只统计 HQ 时，挂单也只看 HQ（API 已过滤时全为 HQ，这里兜底）
-  const currentListings = hqOnly
-    ? (priceData?.listings || []).filter((l) => l.hq)
-    : (priceData?.listings || []);
+  // 只统计 HQ 时挂单只看 HQ（API 已过滤时全为 HQ，这里兜底）
+  const currentListings = hqOnly ? listings.filter((l) => l.hq) : listings;
+  const advice = statsAdvice;
 
-  // 无足够数据
+  // 无足够数据（挂单为空 → 无法给出基于当前价格的建议）
   if (currentListings.length === 0) {
     return {
       rating: "insufficient",
@@ -228,21 +84,21 @@ export function analyzePurchaseAdvice(
       details: {
         currentLowestPrice: 0,
         effectiveBuyPrice: 0,
-        weightedRefPrice: 0,
-        ewmaPrice: 0,
-        historicalMedianPrice: 0,
-        historicalLowestPrice: 0,
-        lowestPriceRecord: undefined,
-        historicalHighestPrice: 0,
-        percentile25: 0,
-        percentile75: 0,
+        weightedRefPrice: advice?.weightedRefPrice ?? 0,
+        ewmaPrice: advice?.ewmaPrice ?? 0,
+        historicalMedianPrice: advice?.historicalMedianPrice ?? 0,
+        historicalLowestPrice: advice?.historicalLowestPrice ?? 0,
+        lowestPriceRecord: advice?.lowestPriceRecord,
+        historicalHighestPrice: advice?.historicalHighestPrice ?? 0,
+        percentile25: advice?.percentile25 ?? 0,
+        percentile75: advice?.percentile75 ?? 0,
         priceRatio: 0,
         savingsPercent: 0,
-        recordCount: localRecords.length,
-        recentWeekCount: 0,
-        trend: "stable",
-        cv: 0,
-        stdDev: 0,
+        recordCount: advice?.recordCount ?? 0,
+        recentWeekCount: advice?.recentWeekCount ?? 0,
+        trend: advice?.trend ?? "stable",
+        cv: advice?.cv ?? 0,
+        stdDev: advice?.stdDev ?? 0,
       },
     };
   }
@@ -251,53 +107,20 @@ export function analyzePurchaseAdvice(
   const currentLowestPrice = Math.min(...currentListings.map((l) => l.pricePerUnit));
   const effectiveBuyPrice = currentLowestPrice * (1 + TAX_RATE);
 
-  // === 历史数据分析（本地存储优先，无则用 API 返回的）===
-  const prices = records.map((r) => r.pricePerUnit);
-  const sorted = [...prices].sort((a, b) => a - b);
-  const len = sorted.length;
+  const weightedRefPrice = advice?.weightedRefPrice ?? 0;
+  const recordCount = advice?.recordCount ?? 0;
+  const trend = advice?.trend ?? "stable";
+  const cv = advice?.cv ?? 0;
 
-  const historicalLowestPrice = len > 0 ? sorted[0] : 0;
-  const historicalHighestPrice = len > 0 ? sorted[len - 1] : 0;
-  // 找出历史最低价的那笔交易
-  const lowestPriceRecord = len > 0
-    ? records.find((r) => r.pricePerUnit === sorted[0])
-    : undefined;
-
-  // 百分位
-  const percentile25 = percentile(sorted, 25);
-  const percentile75 = percentile(sorted, 75);
-  const historicalMedianPrice = percentile(sorted, 50);
-
-  // 时间衰减加权 P25 参考价（主参考基准）
-  const weightedRefPrice = timeDecayWeightedP25(records);
-
-  // EWMA 指数加权均价
-  const ewmaPrice = len > 0 ? ewma(records, 7) : 0;
-
-  // 波动率
-  const avgPrice = len > 0 ? prices.reduce((s, p) => s + p, 0) / len : 0;
-  const stdDevVal = stdDev(prices, avgPrice);
-  const cv = avgPrice > 0 ? stdDevVal / avgPrice : 0;
-
-  // 近 7 天成交笔数
-  const oneWeekAgo = Date.now() / 1000 - 7 * 24 * 60 * 60;
-  const recentWeekRecords = records.filter((r) => r.timestamp >= oneWeekAgo);
-  const recentWeekCount = recentWeekRecords.length;
-
-  // 价格趋势
-  const trend = detectTrend(records, sorted);
-
-  // 主流成交价位带（只需 bandLo 判断是否低于主流价）
-  const [bandLo] = priceDensityBand(sorted);
-
-  // === 购买建议逻辑 ===
-  // 参考价：用时间衰减加权 P25
-  const refPrice = weightedRefPrice > 0 ? weightedRefPrice : avgPrice;
+  // 参考价：时间衰减加权 P25（服务端）；无历史时退回 EWMA 或 0
+  const refPrice = weightedRefPrice > 0
+    ? weightedRefPrice
+    : (advice?.ewmaPrice && advice.ewmaPrice > 0 ? advice.ewmaPrice : 0);
   const priceRatio = refPrice > 0 ? effectiveBuyPrice / refPrice : 1;
   const savingsPercent = refPrice > 0 ? ((refPrice - effectiveBuyPrice) / refPrice) * 100 : 0;
 
-  // 是否在主流价位范围内（用实付价判断）
-  const isBelowLowBand = len >= 4 && effectiveBuyPrice < bandLo;
+  // 是否在主流价位范围内（用实付价判断；P25 为低位带下界）
+  const isBelowLowBand = recordCount >= 4 && effectiveBuyPrice < (advice?.percentile25 ?? 0);
 
   let rating: "buy" | "watch" | "avoid" | "insufficient";
   let summary: string;
@@ -342,27 +165,20 @@ export function analyzePurchaseAdvice(
       currentLowestPrice,
       effectiveBuyPrice,
       weightedRefPrice,
-      ewmaPrice,
-      historicalMedianPrice,
-      historicalLowestPrice,
-      lowestPriceRecord: lowestPriceRecord
-        ? {
-            worldName: lowestPriceRecord.worldName,
-            buyerName: lowestPriceRecord.buyerName,
-            timestamp: lowestPriceRecord.timestamp,
-            hq: lowestPriceRecord.hq,
-          }
-        : undefined,
-      historicalHighestPrice,
-      percentile25,
-      percentile75,
+      ewmaPrice: advice?.ewmaPrice ?? 0,
+      historicalMedianPrice: advice?.historicalMedianPrice ?? 0,
+      historicalLowestPrice: advice?.historicalLowestPrice ?? 0,
+      lowestPriceRecord: advice?.lowestPriceRecord,
+      historicalHighestPrice: advice?.historicalHighestPrice ?? 0,
+      percentile25: advice?.percentile25 ?? 0,
+      percentile75: advice?.percentile75 ?? 0,
       priceRatio,
       savingsPercent,
-      recordCount: len,
-      recentWeekCount,
+      recordCount,
+      recentWeekCount: advice?.recentWeekCount ?? 0,
       trend,
       cv,
-      stdDev: stdDevVal,
+      stdDev: advice?.stdDev ?? 0,
     },
   };
 }

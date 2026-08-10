@@ -86,9 +86,7 @@ export const MAX_HISTORY = 30;
 export const HISTORY_API_BASE: string = "https://ffxiv-api.neeeel.com"
 // export const HISTORY_API_BASE: string = "http://localhost:5174"
 
-// 交易记录本地存储
-export const TRANSACTION_RECORDS_KEY = "ff14_transaction_records";
-export const RECORDING_ENABLED_KEY = "ff14_recording_enabled";
+// 交易记录本地存储（已删除：建议统计迁移至 how-much-history 服务端）
 
 // 上次选中大区
 export const REGION_KEY = "ff14_last_region";

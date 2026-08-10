@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Card, Tag, Typography, Row, Col, Tooltip } from "antd";
+import { Tag, Typography, Row, Col, Tooltip } from "antd";
 import {
   CheckCircleOutlined,
   WarningOutlined,
@@ -9,7 +9,6 @@ import {
   ArrowUpOutlined,
   MinusOutlined,
   PercentageOutlined,
-  ThunderboltOutlined,
 } from "@ant-design/icons";
 import type { PurchaseAdviceResult } from "../utils/purchaseAdvice";
 import { fmtPrice } from "../utils/formatPrice";
@@ -20,7 +19,7 @@ interface PurchaseAdviceProps {
   hqOnly?: boolean;
 }
 
-/** 购买建议展示组件 */
+/** 购买建议展示区（无 Card 外壳，由外层模块 Card 统一包裹） */
 export function PurchaseAdvice({ result, hqOnly = false }: PurchaseAdviceProps) {
   const { rating, summary, details } = result;
 
@@ -106,16 +105,12 @@ export function PurchaseAdvice({ result, hqOnly = false }: PurchaseAdviceProps) 
           : "var(--text)";
 
   return (
-    <Card
-      className="purchase-advice-card"
-      size="small"
-      title={
-        <>
-          <ThunderboltOutlined /> 购买建议
-          {hqOnly && <span className="pa-hq-hint">当前仅参考 HQ 品质的价格数据</span>}
-        </>
-      }
-    >
+    <div className="purchase-advice-body">
+      {hqOnly && (
+        <div className="pa-hq-note">
+          <InfoCircleOutlined /> 当前仅参考 HQ 品质的价格数据
+        </div>
+      )}
       {/* 评级横幅 */}
       <div
         className="pa-banner"
@@ -291,6 +286,6 @@ export function PurchaseAdvice({ result, hqOnly = false }: PurchaseAdviceProps) 
           </Tooltip>
         </Col>
       </Row>
-    </Card>
+    </div>
   );
 }

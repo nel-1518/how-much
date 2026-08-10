@@ -16,19 +16,11 @@ import { PriceSection } from "./components/PriceSection";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { InfoDialog } from "./components/InfoDialog";
 import {
-  loadRecordingEnabled,
-  saveRecordingEnabled,
-  loadTransactionRecords,
-  saveTransactionRecords,
-  mergeTransactionRecords,
-  cleanExpiredTransactionRecords,
-  clearTransactionRecords,
   loadSidebarOpen,
   saveSidebarOpen,
   loadSidebarWidth,
   saveSidebarWidth,
 } from "./history";
-import type { TransactionStore } from "./types";
 import "./App.css";
 
 interface AppProps {
@@ -40,11 +32,6 @@ interface AppProps {
 
 function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
   const { scope, dcServer, setScope, selectServer } = useRegionScope();
-  const [recordingEnabled, setRecordingEnabled] = useState(loadRecordingEnabled);
-  const [transactionStore, setTransactionStore] = useState<TransactionStore>(() => {
-    cleanExpiredTransactionRecords();
-    return loadTransactionRecords();
-  });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   // 侧栏初始状态：移动端默认关闭（不继承桌面端记忆）；桌面端记住上次开关状态
@@ -75,34 +62,6 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
   const pendingKeyRef = useRef<string | null>(null);
   const composingRef = useRef(false);
   const topInputRef = useRef<ComponentRef<typeof Input> | null>(null);
-
-  // 获取到新的价格数据后，保存交易历史到本地（带自动去重）
-  useEffect(() => {
-    if (!recordingEnabled) return;
-    if (!priceHooks.priceData?.recentHistory?.length) return;
-    const itemId = priceHooks.priceData.itemID;
-    if (itemId == null) return;
-
-    const store = loadTransactionRecords();
-    const newStore = mergeTransactionRecords(
-      store,
-      itemId,
-      searchHooks.selectedItem?.fields.Name || `物品 #${itemId}`,
-      priceHooks.priceData.recentHistory,
-    );
-    saveTransactionRecords(newStore);
-    // 延后一拍更新 state，避免在 effect 内同步 setState 触发级联渲染
-    queueMicrotask(() => setTransactionStore(newStore));
-  }, [priceHooks.priceData, recordingEnabled, searchHooks.selectedItem]);
-
-  const handleRecordingToggle = useCallback((enabled: boolean) => {
-    setRecordingEnabled(enabled);
-    saveRecordingEnabled(enabled);
-    if (!enabled) {
-      clearTransactionRecords();
-      setTransactionStore({});
-    }
-  }, []);
 
   const closeSearchCard = useCallback(() => {
     setShowResults(false);
@@ -393,7 +352,6 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
             viewTab={searchHooks.viewTab}
             onViewTabChange={searchHooks.setViewTab}
             onWiki={searchHooks.handleWiki}
-            transactionStore={transactionStore}
             isDark={isDark}
           />
         )}
@@ -401,8 +359,6 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
         <SettingsDialog
           open={settingsOpen}
           onClose={() => setSettingsOpen(false)}
-          recordingEnabled={recordingEnabled}
-          onRecordingToggle={handleRecordingToggle}
         />
         <InfoDialog
           open={infoOpen}
