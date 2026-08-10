@@ -60,6 +60,7 @@ export const MAX_HISTORY = 30;
 
 // how-much-history 配套服务地址
 export const HISTORY_API_BASE: string = "https://ffxiv-api.neeeel.com"
+// export const HISTORY_API_BASE: string = "http://localhost:5174"
 
 // 交易记录本地存储
 export const TRANSACTION_RECORDS_KEY = "ff14_transaction_records";
@@ -79,6 +80,10 @@ export const DEFAULT_SIDEBAR_W = 280;
 // 主题设置
 export const THEME_KEY = "ff14_theme_mode";
 export type ThemeMode = "auto" | "light" | "dark";
+
+// 金额显示格式（全局）：comma=1,234,567 / space4=123 4567
+export const PRICE_FORMAT_KEY = "ff14_price_format";
+export type PriceFormat = "comma" | "space4";
 
 // 本地物品数据库
 export const ITEM_DB_VERSION_KEY = "ff14_item_db_version";
