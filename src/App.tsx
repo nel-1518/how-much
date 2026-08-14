@@ -348,7 +348,6 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
             priceData={priceHooks.priceData}
             priceLoading={priceHooks.priceLoading}
             fetchPriceData={priceHooks.fetchPriceData}
-            refreshPrice={priceHooks.refreshPrice}
             viewTab={searchHooks.viewTab}
             onViewTabChange={searchHooks.setViewTab}
             onWiki={searchHooks.handleWiki}

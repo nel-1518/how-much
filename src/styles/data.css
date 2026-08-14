@@ -272,11 +272,6 @@
   align-items: center;
   gap: 6px;
 }
-.data-card-extra-spacer {
-  visibility: hidden;
-  pointer-events: none;
-  cursor: default;
-}
 .data-card .ant-card-body {
   padding: 10px 14px 12px;
 }

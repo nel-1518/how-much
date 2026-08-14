@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
-import { Typography, Skeleton, Segmented, Row, Col, Card, Table, Empty, Button, Tooltip, Tag, message, Pagination } from "antd";
-import { ShoppingCartOutlined, HistoryOutlined, RedoOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
+import { Typography, Skeleton, Segmented, Row, Col, Card, Table, Empty, Tag, message, Pagination } from "antd";
+import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
 import { listingColumns, historyColumns, renderWorldName, formatTradeTime } from "../columns";
 import type { DcName } from "../constants";
@@ -26,18 +26,6 @@ function MobilePagedList<T>({ items, renderItem }: {
   );
 }
 
-/** 与刷新按钮完全同构的透明占位（隐藏但保留布局），保证两张卡片标题栏高度一致 */
-const headerExtraSpacer = (
-  <Button
-    type="text"
-    size="small"
-    icon={<RedoOutlined />}
-    className="data-card-extra-spacer"
-    aria-hidden="true"
-    tabIndex={-1}
-  />
-);
-
 interface PriceSectionProps {
   selectedItem: ItemResult;
   /** 当前查询目标："中国" | 大区名 | 服务器名 */
@@ -49,7 +37,6 @@ interface PriceSectionProps {
   priceData: UniversalisResponse | null;
   priceLoading: boolean;
   fetchPriceData: (id: number, region: string, name?: string, hqOnly?: boolean) => void;
-  refreshPrice: (id: number, region: string, name?: string, hqOnly?: boolean) => void;
   viewTab: string;
   onViewTabChange: (v: string) => void;
   onWiki: (name: string) => void;
@@ -60,7 +47,7 @@ interface PriceSectionProps {
 /** 查价结果展示组件：大区/服务器选择栏 + 查价结果 / 价格走势与购买建议 */
 export function PriceSection({
   selectedItem, scope, dcServer, onScopeChange, onSelectServer,
-  priceData, priceLoading, fetchPriceData, refreshPrice,
+  priceData, priceLoading, fetchPriceData,
   viewTab, onViewTabChange, onWiki, isDark,
 }: PriceSectionProps) {
   // 只看 HQ 开关（物品存在 HQ 品质时才可用）
@@ -86,17 +73,10 @@ export function PriceSection({
     fetchPriceData(selectedItem.row_id, scope, selectedItem.fields.Name, checked);
   };
 
-  const listingCard = (extraIcon = <RedoOutlined />) => (
+  const listingCard = () => (
     <Card
       title={<><ShoppingCartOutlined /> 出售列表</>}
       size="small" className="data-card"
-      extra={
-        <Tooltip title="刷新价格">
-          <Button type="text" size="small" icon={extraIcon}
-            onClick={() => refreshPrice(selectedItem.row_id, scope, selectedItem.fields.Name, hqOnly)} loading={priceLoading}
-          />
-        </Tooltip>
-      }
     >
       {priceLoading ? (
         <Skeleton active paragraph={{ rows: 10 }} title={false} />
@@ -142,7 +122,6 @@ export function PriceSection({
     <Card
       title={<><HistoryOutlined /> 交易历史</>}
       size="small" className="data-card"
-      extra={headerExtraSpacer}
     >
       {priceLoading ? (
         <Skeleton active paragraph={{ rows: 9 }} title={false} />
@@ -275,7 +254,7 @@ export function PriceSection({
 
         {/* 移动端：单列切换 */}
         <div className="data-row-mobile">
-          {viewTab === "listings" && listingCard(<RedoOutlined />)}
+          {viewTab === "listings" && listingCard()}
           {viewTab === "history" && historyCard()}
         </div>
       </section>

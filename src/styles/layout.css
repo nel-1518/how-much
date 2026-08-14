@@ -106,16 +106,14 @@
 /* ===== 历史侧栏 ===== */
 .app-shell {
   min-height: 100svh;
+  /* 侧栏展开/收起/拖拽调宽时，用内边距在左侧为侧栏预留空间：
+     主内容（导航栏 + 内容区）在剩余空间内始终水平居中，且不会撑破视口。 */
+  padding-left: 0;
+  transition: padding-left 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-.top-nav,
-.app-container {
-  transition: margin-left 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
-}
-
-.app-shell.sidebar-open .top-nav,
-.app-shell.sidebar-open .app-container {
-  margin-left: var(--sidebar-w);
+.app-shell.sidebar-open {
+  padding-left: var(--sidebar-w);
 }
 
 .history-sidebar {
@@ -323,8 +321,7 @@
   background: var(--accent-border);
 }
 
-.app-shell.resizing .top-nav,
-.app-shell.resizing .app-container,
+.app-shell.resizing,
 .app-shell.resizing .history-sidebar {
   transition: none;
 }
@@ -455,9 +452,9 @@
     right: 10px;
   }
 
-  .app-shell.sidebar-open .top-nav,
-  .app-shell.sidebar-open .app-container {
-    margin-left: 0;
+  /* 移动端侧栏为覆盖式抽屉：不预留空间，主内容保持居中 */
+  .app-shell.sidebar-open {
+    padding-left: 0;
   }
 
   .history-sidebar {
