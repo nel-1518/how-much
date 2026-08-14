@@ -35,7 +35,7 @@
   min-width: 0;
   display: flex;
   justify-content: center;
-  padding: 0 56px;
+  padding: 0 232px 0 56px;
 }
 
 /* ===== 导航栏两侧图标（贴页面左右边缘） ===== */
@@ -55,6 +55,19 @@
 
 .top-nav-right {
   right: 16px;
+  gap: 8px;
+}
+
+.top-nav-mode-title {
+  display: flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.view-mode-seg .seg-label {
+  margin-left: 4px;
 }
 
 .sidebar-toggle {
@@ -451,6 +464,9 @@
   .top-nav-right {
     right: 10px;
   }
+
+  .seg-label { display: none; }
+  .top-nav-search { padding: 0 128px 0 52px; }
 
   /* 移动端侧栏为覆盖式抽屉：不预留空间，主内容保持居中 */
   .app-shell.sidebar-open {

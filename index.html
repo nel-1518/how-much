@@ -5,6 +5,20 @@
     <link rel="icon" type="image/svg+xml" href="/coin.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>这个多少钱</title>
+    <script>
+      // 首次绘制前应用主题，避免进入页面时深/浅色闪烁（FOUC）
+      (function () {
+        try {
+          var mode = localStorage.getItem("ff14_theme_mode");
+          if (mode === "light") {
+            document.documentElement.setAttribute("data-theme", "light");
+          } else if (mode === "dark") {
+            document.documentElement.setAttribute("data-theme", "dark");
+          }
+          // "auto" 或未设置：不干预，由系统偏好（媒体查询）决定
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

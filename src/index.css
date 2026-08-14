@@ -29,6 +29,8 @@
   --shadow-md: rgba(0, 0, 0, 0.06) 0 4px 16px, rgba(0, 0, 0, 0.04) 0 2px 6px;
   --shadow-lg: rgba(0, 0, 0, 0.08) 0 12px 32px, rgba(0, 0, 0, 0.04) 0 4px 12px;
   --shadow-xl: rgba(0, 0, 0, 0.12) 0 20px 48px, rgba(0, 0, 0, 0.06) 0 8px 20px;
+  --scroll-thumb: rgba(74, 68, 88, 0.22);
+  --scroll-thumb-hover: rgba(139, 92, 246, 0.55);
 
   --sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --heading: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -85,6 +87,8 @@
     --shadow-md: rgba(0, 0, 0, 0.4) 0 4px 16px, rgba(0, 0, 0, 0.2) 0 2px 6px;
     --shadow-lg: rgba(0, 0, 0, 0.5) 0 12px 32px, rgba(0, 0, 0, 0.2) 0 4px 12px;
     --shadow-xl: rgba(0, 0, 0, 0.6) 0 20px 48px, rgba(0, 0, 0, 0.3) 0 8px 20px;
+    --scroll-thumb: rgba(176, 174, 184, 0.22);
+    --scroll-thumb-hover: rgba(167, 139, 250, 0.55);
   }
 }
 
@@ -141,20 +145,28 @@ body {
   flex-direction: column;
 }
 
-/* ===== 滚动条 ===== */
+/* ===== 滚动条（全局，亮/暗主题适配） ===== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
+  background: var(--scroll-thumb);
+  border-radius: 4px;
+  transition: background 0.2s ease;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--scroll-thumb-hover);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* ===== 选中文本 ===== */

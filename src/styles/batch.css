@@ -1,0 +1,214 @@
+/* ===== 批量查价（左右分栏，占满纵向空间，列表内部滚动） ===== */
+.app-container.batch-mode {
+  height: calc(100svh - var(--top-nav-h));
+  overflow: hidden;
+}
+
+.batch-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  animation: fadeInUp 0.45s ease;
+}
+
+.batch-layout {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-auto-rows: 1fr;
+  gap: 16px;
+}
+
+.batch-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  padding: 14px 16px 16px;
+  overflow: hidden;
+}
+
+.batch-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-h);
+  margin-bottom: 10px;
+}
+.batch-card-title .anticon { color: var(--accent); }
+
+/* 搜索 */
+.batch-search-input { width: 100%; }
+
+.batch-search-results {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.batch-search-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--bg-card);
+  cursor: pointer;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.batch-search-item:hover { background: var(--bg-elevated); }
+.batch-search-item.active { border-color: var(--accent); background: var(--accent-bg); }
+.batch-search-item.added { opacity: 0.55; cursor: default; }
+.batch-search-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.batch-search-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.batch-search-item.added .batch-search-add { color: var(--stat-green); }
+
+/* 已选物品卡头 + 保存行 */
+.batch-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.batch-card-head .batch-card-title { margin-bottom: 0; }
+
+.batch-save-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.batch-save-left,
+.batch-save-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.batch-set-name { width: 180px; }
+.batch-set-load { min-width: 170px; }
+
+/* 表格滚动容器 */
+.batch-table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* 表格行内价格 */
+.batch-cell-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.batch-cell-price {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--mono);
+}
+
+.batch-result-name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.batch-result-name:hover { opacity: 0.8; }
+
+.batch-result-na {
+  font-size: 13px;
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+/* 表格样式（复用 data.css 的单品表格观感） */
+.batch-card .ant-table { font-size: 14px; border-radius: 10px; overflow: hidden; }
+.batch-card .ant-table-thead > tr > th {
+  background: var(--bg-elevated) !important;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 9px 10px !important;
+  border-bottom: 2px solid var(--border) !important;
+  color: var(--text-secondary) !important;
+}
+.batch-card .ant-table-tbody > tr > td {
+  padding: 8px 10px !important;
+  border-bottom: 1px solid var(--border-light) !important;
+}
+.batch-card .ant-table-tbody > tr:hover > td { background: var(--bg-elevated) !important; }
+
+/* 查价按钮 / 加载 / 失败提示 */
+.batch-query-btn {
+  margin-top: 12px;
+  border-radius: 10px !important;
+  font-weight: 600;
+  align-self: flex-start;
+  flex-shrink: 0;
+}
+.batch-card-head,
+.batch-save-row,
+.batch-failed-alert {
+  flex-shrink: 0;
+}
+.batch-results-loading { display: flex; justify-content: center; padding: 32px 0; }
+.batch-failed-alert { margin-top: 12px; }
+
+@media (max-width: 992px) {
+  .app-container.batch-mode { height: auto; overflow: visible; }
+  .batch-area { flex: none; }
+  .batch-layout { grid-template-columns: 1fr; grid-auto-rows: auto; }
+  .batch-search-results { max-height: 280px; }
+  .batch-table-wrap { max-height: 420px; }
+}
+
+@media (max-width: 480px) {
+  .batch-set-name { width: 100%; }
+  .batch-set-load { min-width: 100%; }
+}

@@ -60,4 +60,48 @@ export interface SearchHistoryItem {
   pinned?: boolean;
 }
 
+// ---- Universalis 聚合批量查价（/api/v2/aggregated） ----
+/** 按查询范围嵌套的聚合指标值：world=服务器 / dc=大区 / region=中国全服 */
+export interface AggregatedScopeValue {
+  price?: number;
+  quantity?: number;
+  timestamp?: number;
+  worldId?: number;
+}
+
+export interface AggregatedScopeData {
+  world?: AggregatedScopeValue | null;
+  dc?: AggregatedScopeValue | null;
+  region?: AggregatedScopeValue | null;
+}
+
+/** 一个品质（nq/hq）下的聚合指标 */
+export interface AggregatedMarketData {
+  minListing?: AggregatedScopeData | null;
+  recentPurchase?: AggregatedScopeData | null;
+  averageSalePrice?: AggregatedScopeData | null;
+  dailySaleVelocity?: AggregatedScopeData | null;
+}
+
+export interface AggregatedItemResult {
+  itemId: number;
+  nq: AggregatedMarketData;
+  hq: AggregatedMarketData;
+  /** 各服务器最近上传时间（毫秒） */
+  worldUploadTimes?: { worldId: number; timestamp: number }[];
+}
+
+export interface AggregatedResponse {
+  results: AggregatedItemResult[];
+  failedItems: number[];
+}
+
+export interface BatchItem {
+  id: number;
+  name: string;
+  canBeHq: boolean;
+}
+
+export type ViewMode = "single" | "batch";
+
 

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef, type ComponentRef } from "rea
 import { flushSync } from "react-dom";
 import { Button, Alert, type Input } from "antd";
 import type { ThemeMode } from "./constants";
+import type { BatchItem, ViewMode } from "./types";
 import { useSearchHistory } from "./hooks/useSearchHistory";
 import { usePriceQuery } from "./hooks/usePriceQuery";
 import { useItemSearch } from "./hooks/useItemSearch";
@@ -13,6 +14,7 @@ import { SearchCard } from "./components/SearchCard";
 import { HistorySection } from "./components/HistorySection";
 import { HistorySidebar } from "./components/HistorySidebar";
 import { PriceSection } from "./components/PriceSection";
+import { BatchPriceSection } from "./components/BatchPriceSection";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { InfoDialog } from "./components/InfoDialog";
 import {
@@ -34,6 +36,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
   const { scope, dcServer, setScope, selectServer } = useRegionScope();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("single");
   // 侧栏初始状态：移动端默认关闭（不继承桌面端记忆）；桌面端记住上次开关状态
   const [sidebarOpen, setSidebarOpen] = useState(
     () => (typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches)
@@ -66,6 +69,18 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
   const closeSearchCard = useCallback(() => {
     setShowResults(false);
   }, [setShowResults]);
+
+  /** 模式切换：切到批量时关闭悬浮搜索卡片 */
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    if (mode === "batch") setShowResults(false);
+  }, [setShowResults]);
+
+  /** 批量查价结果中打开单个详情：切回单个模式并按本地库条目查价 */
+  const handleOpenSingleItem = useCallback((item: BatchItem) => {
+    setViewMode("single");
+    selectByDbEntry({ id: item.id, name: item.name, hq: item.canBeHq ? 1 : 0 });
+  }, [selectByDbEntry]);
 
   const handleToggleSidebar = useCallback(() => {
     setSidebarOpen((prev) => {
@@ -134,6 +149,9 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
         return;
       }
 
+      // 批量查价模式：单品搜索的 Tab/字母/粘贴快捷键不生效（Esc、侧栏开关仍可用）
+      if (viewMode === "batch") return;
+
       // Tab：卡片打开时关闭；关闭时打开并聚焦卡片内输入框
       // 顶部输入框已有内容时保留内容（显示对应搜索结果）并全选，空内容时显示历史
       if (e.key === "Tab") {
@@ -186,6 +204,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
     };
 
     const handlePaste = (e: ClipboardEvent) => {
+      if (viewMode === "batch") return;
       if (showResultsRef.current || settingsOpen) return;
       const target = e.target as HTMLElement | null;
       const tag = target?.tagName;
@@ -218,7 +237,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
       document.removeEventListener("compositionstart", handleCompositionStart);
       document.removeEventListener("compositionend", handleCompositionEnd);
     };
-  }, [settingsOpen, infoOpen, closeSearchCard, handleToggleSidebar, handleKeywordChange, setActiveIndex, setShowResults, setFocusCardOnOpen, findExactName, selectByDbEntry]);
+  }, [settingsOpen, infoOpen, viewMode, closeSearchCard, handleToggleSidebar, handleKeywordChange, setActiveIndex, setShowResults, setFocusCardOnOpen, findExactName, selectByDbEntry]);
 
   // 键盘打开卡片后，若首个字符没有进入输入框（浏览器未把默认行为重定向到输入框），手动补入
   useEffect(() => {
@@ -255,6 +274,8 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
           onSelectItem: searchHooks.handleSelectItem,
           onMoveActive: searchHooks.moveActiveIndex,
         }}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={handleToggleSidebar}
         themeMode={themeMode}
@@ -301,7 +322,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
         />
       )}
 
-      <div className={`app-container ${searchHooks.hasSearched ? "searched" : ""}`}>
+      <div className={`app-container${searchHooks.hasSearched || viewMode === "batch" ? " searched" : ""}${viewMode === "batch" ? " batch-mode" : ""}`}>
         {itemDb.status === "error" && (
           <Alert
             message="物品数据库加载失败"
@@ -312,38 +333,51 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
             action={<Button size="small" onClick={() => window.location.reload()}>刷新页面</Button>}
           />
         )}
-        {!searchHooks.hasSearched && (
-          <>
-            <HeroSection />
-            <div className="home-history-card">
-              <HistorySection
-                sortedHistory={historyHooks.sortedHistory}
-                onSearchFromHistory={searchHooks.searchFromHistory}
-                onRemoveHistory={historyHooks.removeHistory}
-                onClearHistory={historyHooks.clearHistory}
-                onTogglePin={historyHooks.togglePin}
-              />
-            </div>
-          </>
-        )}
-
-        {searchHooks.selectedItem && (
-          <PriceSection
-            key={searchHooks.selectedItem.row_id}
-            selectedItem={searchHooks.selectedItem}
+        {viewMode === "batch" ? (
+          <BatchPriceSection
             scope={scope}
             dcServer={dcServer}
             onScopeChange={setScope}
             onSelectServer={selectServer}
-            priceData={priceHooks.priceData}
-            listingsLoading={priceHooks.listingsLoading}
-            historyLoading={priceHooks.historyLoading}
-            fetchPriceData={priceHooks.fetchPriceData}
-            viewTab={searchHooks.viewTab}
-            onViewTabChange={searchHooks.setViewTab}
-            onWiki={searchHooks.handleWiki}
-            isDark={isDark}
+            itemDb={itemDb}
+            onOpenSingleItem={handleOpenSingleItem}
           />
+        ) : (
+          <>
+            {!searchHooks.hasSearched && (
+              <>
+                <HeroSection />
+                <div className="home-history-card">
+                  <HistorySection
+                    sortedHistory={historyHooks.sortedHistory}
+                    onSearchFromHistory={searchHooks.searchFromHistory}
+                    onRemoveHistory={historyHooks.removeHistory}
+                    onClearHistory={historyHooks.clearHistory}
+                    onTogglePin={historyHooks.togglePin}
+                  />
+                </div>
+              </>
+            )}
+
+            {searchHooks.selectedItem && (
+              <PriceSection
+                key={searchHooks.selectedItem.row_id}
+                selectedItem={searchHooks.selectedItem}
+                scope={scope}
+                dcServer={dcServer}
+                onScopeChange={setScope}
+                onSelectServer={selectServer}
+                priceData={priceHooks.priceData}
+                listingsLoading={priceHooks.listingsLoading}
+                historyLoading={priceHooks.historyLoading}
+                fetchPriceData={priceHooks.fetchPriceData}
+                viewTab={searchHooks.viewTab}
+                onViewTabChange={searchHooks.setViewTab}
+                onWiki={searchHooks.handleWiki}
+                isDark={isDark}
+              />
+            )}
+          </>
         )}
 
         <SettingsDialog

@@ -1,17 +1,22 @@
 import type { ReactNode } from "react";
-import { Button, Dropdown, Tooltip, type MenuProps } from "antd";
+import { Button, Dropdown, Tooltip, Segmented, type MenuProps } from "antd";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   SyncOutlined,
   SunOutlined,
   MoonOutlined,
+  SearchOutlined,
+  UnorderedListOutlined,
 } from "@ant-design/icons";
 import { SearchSection, type SearchSectionProps } from "./SearchSection";
 import type { ThemeMode } from "../constants";
+import type { ViewMode } from "../types";
 
 interface TopNavProps {
   search: SearchSectionProps;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
   themeMode: ThemeMode;
@@ -38,7 +43,7 @@ const THEME_MENU_ITEMS: MenuProps["items"] = [
 ];
 
 /** 顶部导航栏：搜索栏居中，左侧为侧栏开关，右侧为主题选择菜单 */
-export function TopNav({ search, sidebarOpen, onToggleSidebar, themeMode, isDark, onThemeChange }: TopNavProps) {
+export function TopNav({ search, viewMode, onViewModeChange, sidebarOpen, onToggleSidebar, themeMode, isDark, onThemeChange }: TopNavProps) {
   const handleThemeMenuClick: MenuProps["onClick"] = ({ key }) => {
     onThemeChange(key as ThemeMode);
   };
@@ -59,9 +64,23 @@ export function TopNav({ search, sidebarOpen, onToggleSidebar, themeMode, isDark
           </Tooltip>
         </div>
         <div className="top-nav-search">
-          <SearchSection {...search} />
+          {viewMode === "batch" ? (
+            <div></div>
+          ) : (
+            <SearchSection {...search} />
+          )}
         </div>
         <div className="top-nav-right">
+          <Segmented
+            size="small"
+            className="view-mode-seg"
+            value={viewMode}
+            onChange={(v) => onViewModeChange(v as ViewMode)}
+            options={[
+              { label: <span><SearchOutlined /><span className="seg-label">单个查价</span></span>, value: "single" },
+              { label: <span><UnorderedListOutlined /><span className="seg-label">批量查价</span></span>, value: "batch" },
+            ]}
+          />
           <Tooltip title={`主题：${THEME_LABELS[themeMode]}`}>
             <Dropdown
               menu={{
