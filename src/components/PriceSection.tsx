@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { lazy, Suspense, useState, type ReactNode } from "react";
 import { Typography, Skeleton, Segmented, Row, Col, Card, Table, Empty, Tag, message, Pagination } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
@@ -6,8 +6,10 @@ import { listingColumns, historyColumns, renderWorldName, formatTradeTime } from
 import type { DcName } from "../constants";
 import type { DcServerMap } from "../hooks/useRegionScope";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
-import { StatsChart } from "./StatsChart";
 import { RegionSelector } from "./RegionSelector";
+
+// 价格走势/购买建议（含 chart.js）按需加载：仅搜索后渲染时才下载对应 chunk
+const StatsChart = lazy(() => import("./StatsChart").then((m) => ({ default: m.StatsChart })));
 
 /** 移动端分页列表：每页 15 条，数据/标签变化时通过 key 重置回第一页 */
 function MobilePagedList<T>({ items, renderItem }: {
@@ -262,14 +264,22 @@ export function PriceSection({
 
       {/* 模块二：价格走势与购买建议（合并，建议历史统计来自服务端，挂单来自查价） */}
       <section className="price-module">
-        <StatsChart
-          itemId={selectedItem.row_id}
-          region={scope}
-          canBeHq={canBeHq}
-          isDark={isDark}
-          listings={priceData?.listings ?? []}
-          hqOnly={hqOnly}
-        />
+        <Suspense
+          fallback={
+            <Card className="stats-chart-card" size="small">
+              <Skeleton active paragraph={{ rows: 6 }} title={false} />
+            </Card>
+          }
+        >
+          <StatsChart
+            itemId={selectedItem.row_id}
+            region={scope}
+            canBeHq={canBeHq}
+            isDark={isDark}
+            listings={priceData?.listings ?? []}
+            hqOnly={hqOnly}
+          />
+        </Suspense>
       </section>
     </div>
   );
