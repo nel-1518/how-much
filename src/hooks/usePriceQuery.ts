@@ -23,14 +23,32 @@ function normalizeWorldNames(d: UniversalisResponse): UniversalisResponse {
   };
 }
 
+/** 合并出售列表与交易历史；任一未到时用空数组占位（先到先渲染） */
+function buildMerged(
+  listingsData: UniversalisResponse | null,
+  recentHistory: UniversalisHistory[] | null,
+): UniversalisResponse {
+  const merged: UniversalisResponse = {
+    ...(listingsData ?? {}),
+    listings: listingsData?.listings ?? [],
+    recentHistory: recentHistory ?? [],
+  };
+  return normalizeWorldNames(merged);
+}
+
 /**
  * Universalis 查价 Hook
- * 出售列表与交易历史拆成两个并行请求（列表 60 条、历史 60 条），带内存缓存。
+ * 出售列表与交易历史拆成两个并行请求（列表 60 条、历史 60 条），各自到达后分别更新，
+ * 先到的先渲染；带内存缓存。
  */
 export function usePriceQuery() {
   const [priceData, setPriceData] = useState<UniversalisResponse | null>(null);
-  const [priceLoading, setPriceLoading] = useState(false);
+  const [listingsLoading, setListingsLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const cache = useRef<Map<string, UniversalisResponse>>(new Map());
+  // 两路请求的最新数据：一路先到时，另一路据此合并
+  const listingsDataRef = useRef<UniversalisResponse | null>(null);
+  const historyDataRef = useRef<UniversalisHistory[] | null>(null);
 
   /** 交易历史：优先访问服务器，失败回退直连 Universalis */
   const fetchHistory = useCallback(async (itemId: number, regionKey: string, hqOnly: boolean): Promise<UniversalisHistory[]> => {
@@ -61,37 +79,60 @@ export function usePriceQuery() {
     const key = `${itemId}-${regionKey}-${hqOnly ? "hq" : "all"}`;
     const cached = cache.current.get(key);
     if (cached) { setPriceData(cached); return; }
-    setPriceLoading(true);
+
+    // 新查询：清空旧数据，两路各自进入加载态
+    listingsDataRef.current = null;
+    historyDataRef.current = null;
     setPriceData(null);
+    setListingsLoading(true);
+    setHistoryLoading(true);
+
     // 查询目标直接传中文名："中国"→china，大区/服务器名作为路径本身（Universalis 支持）
     const path = REGION_MAP[regionKey] ?? regionKey;
     // 设置中勾选"代理"后，代理访问 Universalis（替换 baseURL）
     const base = loadUseProxy() ? UNIVERSALIS_PROXY_BASE : UNIVERSALIS_BASE;
     const hqParam = hqOnly ? "&hq=true" : "";
+
     // 出售列表：60 条、不带交易历史（entries=0，加速访问）
-    const listingsPromise = fetch(`${base}/api/v2/${path}/${itemId}?listings=60&entries=0${hqParam}`)
+    fetch(`${base}/api/v2/${path}/${itemId}?listings=60&entries=0${hqParam}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<UniversalisResponse>;
-      });
-    // 交易历史：60 条（失败自动回退直连）
-    const historyPromise = fetchHistory(itemId, regionKey, hqOnly);
-
-    Promise.all([listingsPromise, historyPromise])
-      .then(([listingsData, recentHistory]) => {
-        const merged = normalizeWorldNames({ ...listingsData, recentHistory });
-        cache.current.set(key, merged);
+      })
+      .then((listingsData) => {
+        listingsDataRef.current = listingsData;
+        const merged = buildMerged(listingsData, historyDataRef.current);
+        if (historyDataRef.current !== null) cache.current.set(key, merged);
         setPriceData(merged);
       })
-      .catch(() => message.error("查价失败"))
-      .finally(() => setPriceLoading(false));
+      .catch(() => message.error("出售列表获取失败"))
+      .finally(() => setListingsLoading(false));
+
+    // 交易历史：60 条（失败自动回退直连 Universalis）
+    fetchHistory(itemId, regionKey, hqOnly)
+      .then((recentHistory) => {
+        historyDataRef.current = recentHistory;
+        const merged = buildMerged(listingsDataRef.current, recentHistory);
+        if (listingsDataRef.current !== null) cache.current.set(key, merged);
+        setPriceData(merged);
+      })
+      .catch(() => message.error("交易历史获取失败"))
+      .finally(() => setHistoryLoading(false));
   }, [fetchHistory]);
 
   return {
     priceData,
-    priceLoading,
+    listingsLoading,
+    historyLoading,
     setPriceData,
     fetchPriceData: useCallback((id: number, region: string, _name?: string, hqOnly = false) => doFetch(id, region, hqOnly), [doFetch]),
-    clearPrice: useCallback(() => { cache.current.clear(); setPriceData(null); }, []),
+    clearPrice: useCallback(() => {
+      cache.current.clear();
+      listingsDataRef.current = null;
+      historyDataRef.current = null;
+      setPriceData(null);
+      setListingsLoading(false);
+      setHistoryLoading(false);
+    }, []),
   };
 }

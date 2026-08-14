@@ -7,6 +7,8 @@ export interface SearchCardProps {
   keyword: string;
   results: ItemResult[];
   loading: boolean;
+  /** 物品数据库状态：未就绪时结果区显示加载/失败提示 */
+  dbStatus: "loading" | "ready" | "error";
   activeIndex: number;
   /** 由 Tab 打开时为 true，自动聚焦卡片内输入框 */
   focusOnMount: boolean;
@@ -20,7 +22,7 @@ export interface SearchCardProps {
 
 /** 居中悬浮搜索卡片：输入框（与顶部同步显示）+ 搜索结果 */
 export function SearchCard({
-  keyword, results, loading, activeIndex, focusOnMount,
+  keyword, results, loading, dbStatus, activeIndex, focusOnMount,
   onKeywordChange, onSearch, onSelectItem, onMoveActive, onActivate, onClose,
 }: SearchCardProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -147,7 +149,13 @@ export function SearchCard({
         </div>
 
         <div className="search-results" ref={resultsRef}>
-          {loading ? (
+          {dbStatus === "loading" ? (
+            <div className="search-loading"><Spin size="small" /><span>正在加载物品数据库…</span></div>
+          ) : dbStatus === "error" ? (
+            <div className="search-empty">
+              <Typography.Text type="secondary">物品数据库加载失败，请刷新页面重试</Typography.Text>
+            </div>
+          ) : loading ? (
             <div className="search-loading"><Spin size="small" /><span>搜索中...</span></div>
           ) : results.length > 0 ? (
             <div className="result-list">

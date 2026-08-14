@@ -35,7 +35,8 @@ interface PriceSectionProps {
   onScopeChange: (scope: string) => void;
   onSelectServer: (dc: DcName, world: string) => void;
   priceData: UniversalisResponse | null;
-  priceLoading: boolean;
+  listingsLoading: boolean;
+  historyLoading: boolean;
   fetchPriceData: (id: number, region: string, name?: string, hqOnly?: boolean) => void;
   viewTab: string;
   onViewTabChange: (v: string) => void;
@@ -47,7 +48,7 @@ interface PriceSectionProps {
 /** 查价结果展示组件：大区/服务器选择栏 + 查价结果 / 价格走势与购买建议 */
 export function PriceSection({
   selectedItem, scope, dcServer, onScopeChange, onSelectServer,
-  priceData, priceLoading, fetchPriceData,
+  priceData, listingsLoading, historyLoading, fetchPriceData,
   viewTab, onViewTabChange, onWiki, isDark,
 }: PriceSectionProps) {
   // 只看 HQ 开关（物品存在 HQ 品质时才可用）
@@ -78,7 +79,7 @@ export function PriceSection({
       title={<><ShoppingCartOutlined /> 出售列表</>}
       size="small" className="data-card"
     >
-      {priceLoading ? (
+      {listingsLoading ? (
         <Skeleton active paragraph={{ rows: 10 }} title={false} />
       ) : priceData?.listings?.length ? (
         <>
@@ -123,7 +124,7 @@ export function PriceSection({
       title={<><HistoryOutlined /> 交易历史</>}
       size="small" className="data-card"
     >
-      {priceLoading ? (
+      {historyLoading ? (
         <Skeleton active paragraph={{ rows: 9 }} title={false} />
       ) : priceData?.recentHistory?.length ? (
         <>

@@ -160,6 +160,13 @@
   white-space: nowrap;
 }
 
+/* 顶部输入框内的物品数据库加载/失败状态提示 */
+.top-nav .search-trigger-input .search-db-status {
+  font-size: 12px;
+  color: var(--search-placeholder);
+  white-space: nowrap;
+}
+
 /* ===== 居中悬浮搜索卡片 ===== */
 .search-modal-overlay {
   position: fixed;

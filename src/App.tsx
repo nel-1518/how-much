@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef, type ComponentRef } from "react";
 import { flushSync } from "react-dom";
-import { Button, Spin, Alert, type Input } from "antd";
+import { Button, Alert, type Input } from "antd";
 import type { ThemeMode } from "./constants";
 import { useSearchHistory } from "./hooks/useSearchHistory";
 import { usePriceQuery } from "./hooks/usePriceQuery";
@@ -235,30 +235,8 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
     return () => window.clearTimeout(timer);
   }, [searchHooks.showResults, handleKeywordChange]);
 
-  // 物品数据库加载中
-  if (itemDb.status === "loading") {
-    return (
-      <div className="app-container" style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "100vh" }}>
-        <Spin size="large" tip="正在加载物品数据库…" />
-      </div>
-    );
-  }
-
-  // 物品数据库加载失败
-  if (itemDb.status === "error") {
-    return (
-      <div className="app-container" style={{ padding: 48 }}>
-        <Alert
-          message="加载失败"
-          description={itemDb.errorMsg}
-          type="error"
-          showIcon
-          action={<Button onClick={() => window.location.reload()}>刷新页面</Button>}
-        />
-      </div>
-    );
-  }
-
+  // 物品数据库不再阻塞首屏：加载中直接渲染页面（搜索在数据库就绪前提示"加载中"）；
+  // 加载失败时在内容区顶部显示错误提示，页面其余功能不受影响
   return (
     <div
       className={`app-shell${sidebarOpen ? " sidebar-open" : ""}${sidebarResizing ? " resizing" : ""}`}
@@ -270,6 +248,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
           results: searchHooks.results,
           loading: searchHooks.loading,
           activeIndex: searchHooks.activeIndex,
+          dbStatus: itemDb.status,
           inputRef: topInputRef,
           onKeywordChange: handleTopKeywordChange,
           onSearch: searchHooks.doSearch,
@@ -311,6 +290,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
           results={searchHooks.results}
           loading={searchHooks.loading}
           activeIndex={searchHooks.activeIndex}
+          dbStatus={itemDb.status}
           focusOnMount={focusCardOnOpen}
           onKeywordChange={searchHooks.handleKeywordChange}
           onSearch={searchHooks.doSearch}
@@ -322,6 +302,16 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
       )}
 
       <div className={`app-container ${searchHooks.hasSearched ? "searched" : ""}`}>
+        {itemDb.status === "error" && (
+          <Alert
+            message="物品数据库加载失败"
+            description={itemDb.errorMsg}
+            type="error"
+            showIcon
+            style={{ marginBottom: 16, width: "100%", maxWidth: 800 }}
+            action={<Button size="small" onClick={() => window.location.reload()}>刷新页面</Button>}
+          />
+        )}
         {!searchHooks.hasSearched && (
           <>
             <HeroSection />
@@ -346,7 +336,8 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
             onScopeChange={setScope}
             onSelectServer={selectServer}
             priceData={priceHooks.priceData}
-            priceLoading={priceHooks.priceLoading}
+            listingsLoading={priceHooks.listingsLoading}
+            historyLoading={priceHooks.historyLoading}
             fetchPriceData={priceHooks.fetchPriceData}
             viewTab={searchHooks.viewTab}
             onViewTabChange={searchHooks.setViewTab}
