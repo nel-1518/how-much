@@ -82,11 +82,13 @@ export const HISTORY_KEY = "ff14_search_history";
 export const HISTORY_PINNED_KEY = "ff14_search_history_pinned";
 export const MAX_HISTORY = 30;
 
-// how-much-history 配套服务地址
+// 配套服务地址
 export const HISTORY_API_BASE: string = "https://ffxiv-api.neeeel.com"
 // export const HISTORY_API_BASE: string = "http://localhost:5174"
 
-// 交易记录本地存储（已删除：建议统计迁移至 how-much-history 服务端）
+// Universalis 行情地址；设置中勾选"代理"后，改为通过 HISTORY_API_BASE 代访问
+export const UNIVERSALIS_BASE: string = "https://universalis.app"
+export const UNIVERSALIS_PROXY_BASE: string = HISTORY_API_BASE
 
 // 上次选中大区
 export const REGION_KEY = "ff14_last_region";
@@ -109,6 +111,9 @@ export type ThemeMode = "auto" | "light" | "dark";
 // 金额显示格式（全局）：comma=1,234,567 / space4=123 4567
 export const PRICE_FORMAT_KEY = "ff14_price_format";
 export type PriceFormat = "comma" | "space4";
+
+// 是否通过代理访问 Universalis（交易数据：出售列表与交易历史）
+export const USE_PROXY_KEY = "ff14_use_proxy";
 
 // 本地物品数据库
 export const ITEM_DB_VERSION_KEY = "ff14_item_db_version";

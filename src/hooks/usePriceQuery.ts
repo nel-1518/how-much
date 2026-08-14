@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef } from "react";
 import { message } from "antd";
 import type { UniversalisListing, UniversalisHistory, UniversalisResponse } from "../types";
-import { REGION_MAP } from "../constants";
+import { REGION_MAP, UNIVERSALIS_BASE, UNIVERSALIS_PROXY_BASE } from "../constants";
+import { loadUseProxy } from "../utils/proxy";
 
 /**
  * 归一化 Universalis 响应：单服务器查询时 listings/recentHistory 的每条记录
@@ -43,9 +44,14 @@ export function usePriceQuery() {
     setPriceData(null);
     // 查询目标直接传中文名："中国"→china，大区/服务器名作为路径本身（Universalis 支持）
     const path = REGION_MAP[regionKey] ?? regionKey;
+    // 设置中勾选"代理"后，代理访问 Universalis（替换 baseURL）
+    const base = loadUseProxy() ? UNIVERSALIS_PROXY_BASE : UNIVERSALIS_BASE;
     const hqParam = hqOnly ? "&hq=true" : "";
-    fetch(`https://universalis.app/api/v2/${path}/${itemId}?listings=${count}&entries=${count}${hqParam}`)
-      .then((r) => r.json())
+    fetch(`${base}/api/v2/${path}/${itemId}?listings=${count}&entries=${count}${hqParam}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((d) => { const normalized = normalizeWorldNames(d); cache.current.set(key, normalized); setPriceData(normalized); })
       .catch(() => message.error("查价失败"))
       .finally(() => setPriceLoading(false));

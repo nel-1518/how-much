@@ -75,7 +75,7 @@ export const STATS_RANGE_OPTIONS = [
 export type StatsRange = (typeof STATS_RANGE_OPTIONS)[number]["value"];
 
 /**
- * 获取每日平均价统计（how-much-history /api/stats/daily，无鉴权）。
+ * 获取每日平均价统计（/api/stats/daily，无鉴权）。
  * 服务端收到请求时会执行注册逻辑（首次注册并采集），返回后即可查询最新统计。
  * @param itemId 物品 ID
  * @param region 查询目标："中国"（全服，省略参数）| 大区名（region=）| 服务器名（world=）
