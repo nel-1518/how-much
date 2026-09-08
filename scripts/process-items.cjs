@@ -9,6 +9,12 @@
  * 生成文件:
  *   public/data/item-db.json          — 物品数据 [{ id, name, description, hq }]
  *   public/data/item-db.version.json  — 版本信息 { version, itemCount, generated }
+ *   public/data/new-items.json        — 本次新增物品（与上次 item-db.json 相比多出的条目，按 id 对比）
+ *   public/data/removed-items.json    — 本次移除物品（上次存在但本次 CSV 已无的条目，按 id 对比）
+ *
+ * 新增/移除的展示方式（MAX_INLINE_DELTA = 20）:
+ *   - 数量 ≤ 20 条: 在命令行逐行显示（不写文件，并清理上一轮遗留的增量文件）
+ *   - 数量 > 20 条: 写入上方对应的固定文件
  *
  * CSV 格式说明:
  *   - 第1行: 列索引 (0,1,2,...)
@@ -27,6 +33,9 @@ const path = require('path');
 // ====== 配置 ======
 const TARGET_COLUMNS = ['#', 'Name', 'Description', 'IsUntradable', 'CanBeHq'];
 const CSV_DELIMITER = ',';
+
+// 新增/移除增量输出阈值：数量 ≤ 该值时在命令行逐行显示（不写文件），超过才写入文件
+const MAX_INLINE_DELTA = 20;
 
 // 默认输出路径：脚本位于 scripts/，项目根目录的 public/data/
 const DEFAULT_OUT_DIR = path.resolve(__dirname, '..', 'public', 'data');
@@ -134,6 +143,50 @@ function computeVersion(items, generatedTime) {
   return `${dateStr}-${count}-${hashStr}`;
 }
 
+/**
+ * 读取 JSON 文件，若文件不存在或解析失败返回 null
+ */
+function readJsonIfExists(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+  } catch (err) {
+    console.warn(`⚠ 读取 ${filePath} 失败（${err.message}），跳过对比`);
+    return null;
+  }
+}
+
+/**
+ * 输出新增/移除的增量结果
+ *  - 数量 ≤ MAX_INLINE_DELTA：在命令行逐行显示（不写文件，并清理上一轮可能遗留的增量文件）
+ *  - 数量 >  MAX_INLINE_DELTA：写入固定文件（new-items.json / removed-items.json）
+ */
+function outputDelta(deltaItems, label, filePath) {
+  const count = deltaItems.length;
+
+  if (count === 0) {
+    console.log(`✔ 本次${label}: 0 条`);
+    return;
+  }
+
+  if (count <= MAX_INLINE_DELTA) {
+    console.log(`✔ 本次${label}: ${count} 条（逐行显示）`);
+    for (const it of deltaItems) {
+      console.log(`   ${it.id} ${it.name}`);
+    }
+    // 清理上一轮写入的增量文件，避免小变更时不写文件却残留上一轮的大文件
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log(`   （已删除上一轮遗留文件: ${filePath}）`);
+    }
+    return;
+  }
+
+  fs.writeFileSync(filePath, JSON.stringify(deltaItems, null, 2), 'utf-8');
+  console.log(`✔ 本次${label}: ${count} 条（已写入文件）`);
+  console.log(`   ${filePath}`);
+}
+
 // ====== 主逻辑 ======
 
 function main() {
@@ -213,8 +266,18 @@ function main() {
   const now = new Date();
   const version = computeVersion(items, now);
 
-  // 写入物品数据 JSON
+  // ====== 增量对比：找出本次新增/移除的物品 ======
+  // 必须在覆盖 item-db.json 之前读取旧数据作为基线
   const dataPath = path.join(outDir, 'item-db.json');
+  const oldItems = readJsonIfExists(dataPath) || [];
+
+  const oldById = new Map(oldItems.map((it) => [it.id, it]));
+  const newIds = new Set(items.map((it) => it.id));
+
+  const addedItems = items.filter((it) => !oldById.has(it.id));
+  const removedItems = oldItems.filter((it) => !newIds.has(it.id));
+
+  // 写入物品数据 JSON
   fs.writeFileSync(dataPath, JSON.stringify(items), 'utf-8');
 
   // 写入版本文件 JSON
@@ -230,6 +293,14 @@ function main() {
   console.log(`✔ 数据文件: ${dataPath}`);
   console.log(`✔ 版本文件: ${versionPath}`);
   console.log(`✔ 版本号: ${version}`);
+
+  // 输出本次新增/移除（有旧基线时才对比输出）
+  if (oldItems.length > 0) {
+    outputDelta(addedItems, '新增', path.join(outDir, 'new-items.json'));
+    outputDelta(removedItems, '移除', path.join(outDir, 'removed-items.json'));
+  } else {
+    console.warn(`⚠ 未找到旧数据基线（${dataPath}），本次不输出新增/移除结果`);
+  }
 }
 
 main();
