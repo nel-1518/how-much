@@ -97,9 +97,8 @@ export const MAX_HISTORY = 30;
 export const HISTORY_API_BASE: string = "https://ffxiv-api.neeeel.com"
 // export const HISTORY_API_BASE: string = "http://localhost:5174"
 
-// Universalis 行情地址；设置中勾选"代理"后，改为通过 HISTORY_API_BASE 代访问
+// Universalis 行情地址（前端直连，服务端不再提供代理）
 export const UNIVERSALIS_BASE: string = "https://universalis.app"
-export const UNIVERSALIS_PROXY_BASE: string = HISTORY_API_BASE
 
 // 上次选中大区
 export const REGION_KEY = "ff14_last_region";
@@ -122,9 +121,6 @@ export type ThemeMode = "auto" | "light" | "dark";
 // 金额显示格式（全局）：comma=1,234,567 / space4=123 4567
 export const PRICE_FORMAT_KEY = "ff14_price_format";
 export type PriceFormat = "comma" | "space4";
-
-// 是否通过代理访问 Universalis（交易数据：出售列表与交易历史）
-export const USE_PROXY_KEY = "ff14_use_proxy";
 
 // 本地物品数据库
 export const ITEM_DB_VERSION_KEY = "ff14_item_db_version";

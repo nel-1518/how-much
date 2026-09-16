@@ -1,5 +1,4 @@
-import { REGION_MAP, UNIVERSALIS_BASE, UNIVERSALIS_PROXY_BASE } from "../constants";
-import { loadUseProxy } from "./proxy";
+import { REGION_MAP, UNIVERSALIS_BASE } from "../constants";
 import type { AggregatedResponse } from "../types";
 
 /** 一次批量查价最多允许的物品数 */
@@ -10,11 +9,10 @@ export function buildAggregatedPath(scope: string): string {
   return REGION_MAP[scope] ?? scope;
 }
 
-/** 组装聚合查价 URL（勾选代理时走服务端代理） */
+/** 组装聚合查价 URL（直连 Universalis） */
 export function buildAggregatedUrl(scope: string, itemIds: number[]): string {
   const path = buildAggregatedPath(scope);
-  const base = loadUseProxy() ? UNIVERSALIS_PROXY_BASE : UNIVERSALIS_BASE;
-  return base + "/api/v2/aggregated/" + encodeURIComponent(path) + "/" + itemIds.join(",");
+  return UNIVERSALIS_BASE + "/api/v2/aggregated/" + encodeURIComponent(path) + "/" + itemIds.join(",");
 }
 
 /** 批量查价：去重、截断到上限，失败抛错供上层提示 */

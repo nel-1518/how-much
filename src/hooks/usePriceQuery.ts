@@ -1,8 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { message } from "antd";
 import type { UniversalisListing, UniversalisHistory, UniversalisResponse } from "../types";
-import { REGION_MAP, UNIVERSALIS_BASE, UNIVERSALIS_PROXY_BASE, HISTORY_API_BASE, isWorldName } from "../constants";
-import { loadUseProxy } from "../utils/proxy";
+import { REGION_MAP, UNIVERSALIS_BASE, HISTORY_API_BASE, isWorldName } from "../constants";
 
 /**
  * 归一化 Universalis 响应：单服务器查询时 listings/recentHistory 的每条记录
@@ -89,12 +88,10 @@ export function usePriceQuery() {
 
     // 查询目标直接传中文名："中国"→china，大区/服务器名作为路径本身（Universalis 支持）
     const path = REGION_MAP[regionKey] ?? regionKey;
-    // 设置中勾选"代理"后，代理访问 Universalis（替换 baseURL）
-    const base = loadUseProxy() ? UNIVERSALIS_PROXY_BASE : UNIVERSALIS_BASE;
     const hqParam = hqOnly ? "&hq=true" : "";
 
     // 出售列表：60 条、不带交易历史（entries=0，加速访问）
-    fetch(`${base}/api/v2/${path}/${itemId}?listings=60&entries=0${hqParam}`)
+    fetch(`${UNIVERSALIS_BASE}/api/v2/${path}/${itemId}?listings=60&entries=0${hqParam}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<UniversalisResponse>;

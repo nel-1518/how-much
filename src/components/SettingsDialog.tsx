@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Modal, Space, Typography, Segmented, Switch } from "antd";
-import { SettingOutlined, NumberOutlined, ApiOutlined } from "@ant-design/icons";
+import { Modal, Space, Typography, Segmented } from "antd";
+import { SettingOutlined, NumberOutlined } from "@ant-design/icons";
 import type { PriceFormat } from "../constants";
 import { loadPriceFormat, savePriceFormat } from "../utils/formatPrice";
-import { loadUseProxy, saveUseProxy } from "../utils/proxy";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -19,7 +18,6 @@ const PRICE_FORMAT_OPTIONS: { label: string; value: PriceFormat; example: string
 export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   // 金额格式：弹窗内部自管（打开时读本地存储，选择即保存；页面重载后生效）
   const [priceFormat, setPriceFormat] = useState<PriceFormat>(loadPriceFormat);
-  const [useProxy, setUseProxy] = useState<boolean>(loadUseProxy);
 
   return (
     <Modal
@@ -60,27 +58,6 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           value: o.value,
         }))}
       />
-
-      <Typography.Title level={5} style={{ marginBottom: 12, marginTop: 24 }}>
-        <ApiOutlined style={{ marginRight: 6 }} />
-        加速访问
-      </Typography.Title>
-      <div className="settings-row">
-        <div className="settings-row-inline">
-          <Space orientation="vertical" size={6} style={{ flex: 1 }}>
-            <Typography.Text type="secondary" style={{ fontSize: 13 }}>
-              服务器代理访问 Universalis，根据不同网络环境可能会加快访问速度。
-            </Typography.Text>
-          </Space>
-          <Switch
-            checked={useProxy}
-            onChange={(v) => {
-              setUseProxy(v);
-              saveUseProxy(v);
-            }}
-          />
-        </div>
-      </div>
     </Modal>
   );
 }
