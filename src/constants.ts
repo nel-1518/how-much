@@ -3,6 +3,7 @@ import area_luxingniao from "./assets/area_luxingniao.png";
 import area_maoxiaopang from "./assets/area_maoxiaopang.png";
 import area_moguli from "./assets/area_moguli.png";
 import area_doudouchai from "./assets/area_doudouchai.png";
+import { publicUrl } from "./utils/publicUrl";
 
 // 大区 → API 路径映射
 export const REGION_MAP: Record<string, string> = {
@@ -125,7 +126,7 @@ export type PriceFormat = "comma" | "space4";
 // 本地物品数据库
 export const ITEM_DB_VERSION_KEY = "ff14_item_db_version";
 export const ITEM_DB_DATA_KEY = "ff14_item_db_data";
-// 注意：如果部署在子路径下（如 http://host/how-much/），请修改基础路径
-export const ITEM_DB_BASE = "/how-much/data";
+// public/ 静态资源路径统一通过 publicUrl 处理，自动适配 Vite base 配置
+export const ITEM_DB_BASE = publicUrl("data");
 export const ITEM_DB_VERSION_URL = `${ITEM_DB_BASE}/item-db.version.json`;
 export const ITEM_DB_DATA_URL = `${ITEM_DB_BASE}/item-db.json`;
