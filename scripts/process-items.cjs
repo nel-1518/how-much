@@ -2,19 +2,24 @@
  * FFXIV 物品数据 CSV → JSON 转换脚本
  *
  * 用法:
- *   node scripts/process-items.js <输入CSV路径>
+ *   node scripts/process-items.js [输出目录]
  *
- * 默认输出到 public/data/ 目录（在项目根目录下运行）
+ * 数据源（按顺序尝试，第一个成功即用）:
+ *   https://raw.githubusercontent.com/InfSein/ffxiv-datamining-mixed/master/chs/Item.csv
+ *   https://cdn.jsdelivr.net/gh/InfSein/ffxiv-datamining-mixed@master/chs/Item.csv
+ *   https://fastly.jsdelivr.net/gh/InfSein/ffxiv-datamining-mixed@master/chs/Item.csv
  *
- * 生成文件:
- *   public/data/item-db.json          — 物品数据 [{ id, name, description, hq }]
- *   public/data/item-db.version.json  — 版本信息 { version, itemCount, generated }
- *   public/data/new-items.json        — 本次新增物品（与上次 item-db.json 相比多出的条目，按 id 对比）
- *   public/data/removed-items.json    — 本次移除物品（上次存在但本次 CSV 已无的条目，按 id 对比）
+ * 运行后会交互式选择过滤模式:
+ *   all    —— 只过滤名称为空 / ID 为空的行
+ *   trade  —— 在 all 基础上过滤 IsUntradable 为 true 的物品
+ *   search —— 在 trade 基础上过滤 ItemSearchCategory 为 0 的物品（默认）
  *
- * 新增/移除的展示方式（MAX_INLINE_DELTA = 20）:
- *   - 数量 ≤ 20 条: 在命令行逐行显示（不写文件，并清理上一轮遗留的增量文件）
- *   - 数量 > 20 条: 写入上方对应的固定文件
+ * 默认输出到当前目录（运行 node 时所在的目录）
+ *
+ * 生成文件（输出目录下）:
+ *   Item.csv                 — 下载的原始 CSV
+ *   item-db.json             — 物品数据 [{ id, name, hq }]
+ *   item-db.version.json     — 版本信息 { version, itemCount, generated }
  *
  * CSV 格式说明:
  *   - 第1行: 列索引 (0,1,2,...)
@@ -24,21 +29,84 @@
  *
  * 输出:
  *   - 仅保留: id, name, hq（CanBeHq: FALSE=0, TRUE=1）
- *   - 过滤: IsUntradable 为 true 的物品将被跳过，名称为空的物品将被跳过，ID 为 1 的物品将被跳过
+ *   - 过滤规则随所选模式（all / trade / search）变化
  */
 
 const fs = require('fs');
 const path = require('path');
+const readline = require('readline');
 
 // ====== 配置 ======
-const TARGET_COLUMNS = ['#', 'Name', 'Description', 'IsUntradable', 'CanBeHq'];
+const TARGET_COLUMNS = ['#', 'Name', 'Description', 'IsUntradable', 'CanBeHq', 'ItemSearchCategory'];
 const CSV_DELIMITER = ',';
 
-// 新增/移除增量输出阈值：数量 ≤ 该值时在命令行逐行显示（不写文件），超过才写入文件
-const MAX_INLINE_DELTA = 20;
+// 数据源：FFXIV datamining 中文物品表（按顺序尝试，第一个成功即用）
+const CSV_URLS = [
+  'https://raw.githubusercontent.com/InfSein/ffxiv-datamining-mixed/master/chs/Item.csv',
+  'https://cdn.jsdelivr.net/gh/InfSein/ffxiv-datamining-mixed@master/chs/Item.csv',
+  'https://fastly.jsdelivr.net/gh/InfSein/ffxiv-datamining-mixed@master/chs/Item.csv',
+];
+const CSV_FILE_NAME = 'Item.csv';
 
-// 默认输出路径：脚本位于 scripts/，项目根目录的 public/data/
-const DEFAULT_OUT_DIR = path.resolve(__dirname, '..', 'public', 'data');
+// 过滤模式（层级递进：search ⊃ trade ⊃ all）
+const FILTER_MODES = ['all', 'trade', 'search'];
+const DEFAULT_FILTER_MODE = 'search';
+
+// 默认输出路径：当前工作目录（运行 node 时所在的目录）
+const DEFAULT_OUT_DIR = process.cwd();
+
+// ====== 下载 CSV ======
+async function downloadCsv(urls, targetPath) {
+  let lastErr = null;
+  for (const url of urls) {
+    console.log(`⏳ 正在下载: ${url}`);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status} ${res.statusText}`);
+      }
+      const buf = Buffer.from(await res.arrayBuffer());
+      fs.writeFileSync(targetPath, buf);
+      console.log(`✔ 已下载: ${targetPath}（${(buf.length / 1024 / 1024).toFixed(2)} MB）\n`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      const reason = err.cause ? `${err.message} (${err.cause.code || err.cause.message})` : err.message;
+      console.warn(`⚠ 下载失败，尝试下一个源: ${reason}`);
+    }
+  }
+  throw new Error(`所有下载源均失败: ${lastErr ? lastErr.message : '未知错误'}`);
+}
+
+// ====== 交互式选择过滤模式 ======
+function askFilterMode() {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    const prompt = [
+      '请选择过滤模式:',
+      '  all    —— 只过滤名称为空 / ID 为空的行',
+      '  trade  —— 在 all 基础上过滤 IsUntradable 为 true 的物品',
+      '  search —— 在 trade 基础上过滤 ItemSearchCategory 为 0 的物品',
+      `请输入 (all/trade/search，直接回车默认 ${DEFAULT_FILTER_MODE}): `,
+    ].join('\n');
+
+    rl.question(`${prompt}\n> `, (answer) => {
+      rl.close();
+      const normalized = (answer || '').trim().toLowerCase();
+      if (normalized === '') {
+        console.log(`未选择，使用默认模式: ${DEFAULT_FILTER_MODE}`);
+        resolve(DEFAULT_FILTER_MODE);
+        return;
+      }
+      if (!FILTER_MODES.includes(normalized)) {
+        console.warn(`⚠ 无效输入 "${normalized}"，使用默认模式: ${DEFAULT_FILTER_MODE}`);
+        resolve(DEFAULT_FILTER_MODE);
+        return;
+      }
+      resolve(normalized);
+    });
+  });
+}
 
 // ====== CSV 解析（支持引号内换行） ======
 
@@ -143,71 +211,23 @@ function computeVersion(items, generatedTime) {
   return `${dateStr}-${count}-${hashStr}`;
 }
 
-/**
- * 读取 JSON 文件，若文件不存在或解析失败返回 null
- */
-function readJsonIfExists(filePath) {
-  if (!fs.existsSync(filePath)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  } catch (err) {
-    console.warn(`⚠ 读取 ${filePath} 失败（${err.message}），跳过对比`);
-    return null;
-  }
-}
-
-/**
- * 输出新增/移除的增量结果
- *  - 数量 ≤ MAX_INLINE_DELTA：在命令行逐行显示（不写文件，并清理上一轮可能遗留的增量文件）
- *  - 数量 >  MAX_INLINE_DELTA：写入固定文件（new-items.json / removed-items.json）
- */
-function outputDelta(deltaItems, label, filePath) {
-  const count = deltaItems.length;
-
-  if (count === 0) {
-    console.log(`✔ 本次${label}: 0 条`);
-    return;
-  }
-
-  if (count <= MAX_INLINE_DELTA) {
-    console.log(`✔ 本次${label}: ${count} 条（逐行显示）`);
-    for (const it of deltaItems) {
-      console.log(`   ${it.id} ${it.name}`);
-    }
-    // 清理上一轮写入的增量文件，避免小变更时不写文件却残留上一轮的大文件
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
-      console.log(`   （已删除上一轮遗留文件: ${filePath}）`);
-    }
-    return;
-  }
-
-  fs.writeFileSync(filePath, JSON.stringify(deltaItems, null, 2), 'utf-8');
-  console.log(`✔ 本次${label}: ${count} 条（已写入文件）`);
-  console.log(`   ${filePath}`);
-}
-
 // ====== 主逻辑 ======
 
 function main() {
+  return run();
+}
+
+async function run() {
   const args = process.argv.slice(2);
 
-  if (args.length === 0) {
-    console.error('用法: node scripts/process-items.js <输入CSV路径>');
-    console.error('输出到 public/data/ 目录');
-    process.exit(1);
-  }
-
-  const inputPath = path.resolve(args[0]);
-  const outDir = args[1] ? path.resolve(args[1]) : DEFAULT_OUT_DIR;
-
-  if (!fs.existsSync(inputPath)) {
-    console.error(`错误: 文件不存在 — ${inputPath}`);
-    process.exit(1);
-  }
+  const outDir = args[0] ? path.resolve(args[0]) : DEFAULT_OUT_DIR;
 
   // 确保输出目录存在
   fs.mkdirSync(outDir, { recursive: true });
+
+  // 下载 CSV 到输出目录
+  const inputPath = path.join(outDir, CSV_FILE_NAME);
+  await downloadCsv(CSV_URLS, inputPath);
 
   const text = fs.readFileSync(inputPath, 'utf-8');
   const rawLines = splitCSVLines(text);
@@ -235,6 +255,10 @@ function main() {
   // 第3行: 数据类型，跳过 (rawLines[2])
   const items = [];
 
+  // 交互式选择过滤模式
+  const mode = await askFilterMode();
+  console.log(`✔ 已选择过滤模式: ${mode}\n`);
+
   for (let i = 3; i < rawLines.length; i++) {
     const line = rawLines[i].trim();
     if (line.length === 0) continue;
@@ -245,15 +269,17 @@ function main() {
     const name = fields[columnMap['Name']] || '';
     const isUntradable = (fields[columnMap['IsUntradable']] || '').trim().toUpperCase() === 'TRUE';
     const canBeHq = (fields[columnMap['CanBeHq']] || '').trim().toUpperCase() === 'TRUE';
+    const itemSearchCategory = (fields[columnMap['ItemSearchCategory']] || '').trim();
 
-    // 跳过无效行（ID 为空、为 0 或为 1）
-    if (id === '' || id === '0' || id === '1') continue;
-
-    // 跳过不可交易物品
-    if (isUntradable) continue;
-
-    // 跳过名称为空的物品
+    // all: 跳过 ID 为空 / 名称为空的行
+    if (id === '') continue;
     if (name === '') continue;
+
+    // trade 及以上: 跳过不可交易物品
+    if (mode !== 'all' && isUntradable) continue;
+
+    // search: 跳过 ItemSearchCategory 为 0 的物品（不在市场分类中，无法被搜索）
+    if (mode === 'search' && (itemSearchCategory === '' || itemSearchCategory === '0')) continue;
 
     items.push({
       id: parseInt(id, 10),
@@ -266,18 +292,8 @@ function main() {
   const now = new Date();
   const version = computeVersion(items, now);
 
-  // ====== 增量对比：找出本次新增/移除的物品 ======
-  // 必须在覆盖 item-db.json 之前读取旧数据作为基线
-  const dataPath = path.join(outDir, 'item-db.json');
-  const oldItems = readJsonIfExists(dataPath) || [];
-
-  const oldById = new Map(oldItems.map((it) => [it.id, it]));
-  const newIds = new Set(items.map((it) => it.id));
-
-  const addedItems = items.filter((it) => !oldById.has(it.id));
-  const removedItems = oldItems.filter((it) => !newIds.has(it.id));
-
   // 写入物品数据 JSON
+  const dataPath = path.join(outDir, 'item-db.json');
   fs.writeFileSync(dataPath, JSON.stringify(items), 'utf-8');
 
   // 写入版本文件 JSON
@@ -293,14 +309,9 @@ function main() {
   console.log(`✔ 数据文件: ${dataPath}`);
   console.log(`✔ 版本文件: ${versionPath}`);
   console.log(`✔ 版本号: ${version}`);
-
-  // 输出本次新增/移除（有旧基线时才对比输出）
-  if (oldItems.length > 0) {
-    outputDelta(addedItems, '新增', path.join(outDir, 'new-items.json'));
-    outputDelta(removedItems, '移除', path.join(outDir, 'removed-items.json'));
-  } else {
-    console.warn(`⚠ 未找到旧数据基线（${dataPath}），本次不输出新增/移除结果`);
-  }
 }
 
-main();
+main().catch((err) => {
+  console.error(`错误: ${err.message}`);
+  process.exit(1);
+});
