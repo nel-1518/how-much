@@ -4,14 +4,14 @@ import { WORLD_TO_DC, DC_ICON_MAP } from "./constants";
 import { formatPrice, getCurrentPriceFormat } from "./utils/formatPrice";
 import type { UniversalisListing, UniversalisHistory } from "./types";
 
-/** 渲染服务器名称 + 大区图标 */
+/** 渲染服务器名称 + 大区图标（名称整体成块，出售列表里用服务器色相给它染色作底） */
 export const renderWorldName = (worldName: string) => {
   const dc = WORLD_TO_DC[worldName];
   const icon = dc ? DC_ICON_MAP[dc] : null;
   return (
     <span className="world-name">
       {icon && <img src={icon} alt={dc} className="dc-icon" title={dc} />}
-      {worldName}
+      <span className="world-label">{worldName}</span>
     </span>
   );
 };
@@ -81,7 +81,7 @@ export interface GridField<T> {
 
 /** 出售列表字段（桌面端两列网格用） */
 export const listingFields = (nowMs: number = Date.now()): GridField<UniversalisListing>[] => [
-  { title: "服务器", width: "1.4fr", render: (l) => renderWorldName(l.worldName) },
+  { title: "服务器", width: "1.1fr", render: (l) => renderWorldName(l.worldName) },
   { title: "品质", width: "0.7fr", align: "center", render: (l) => renderQualityTag(l.hq) },
   { title: "单价", width: "1.5fr", render: (l) => renderPrice(l.pricePerUnit) },
   { title: "数量", width: "0.7fr", align: "center", render: (l) => l.quantity },
@@ -97,7 +97,7 @@ export const listingFields = (nowMs: number = Date.now()): GridField<Universalis
 
 /** 交易历史字段（桌面端两列网格用） */
 export const historyFields = (): GridField<UniversalisHistory>[] => [
-  { title: "服务器", width: "1.4fr", render: (h) => renderWorldName(h.worldName) },
+  { title: "服务器", width: "1.1fr", render: (h) => renderWorldName(h.worldName) },
   { title: "品质", width: "0.7fr", align: "center", render: (h) => renderQualityTag(h.hq) },
   { title: "单价", width: "1.4fr", render: (h) => renderPrice(h.pricePerUnit) },
   { title: "数量", width: "0.7fr", align: "center", render: (h) => h.quantity },
@@ -108,3 +108,23 @@ export const historyFields = (): GridField<UniversalisHistory>[] => [
     render: (h) => <span className="time-cell">{formatTradeTime(h.timestamp)}</span>,
   },
 ];
+
+/**
+ * 为「当前列表显示的服务器」动态生成 OKLCH 色相（0–360）：
+ * - 只统计传入的这批服务器（当前可见数据），数量少、彼此易区分，无需固定色板；
+ * - 按服务器在列表中「首次出现的先后」分配：靠前的先拿色（起始色相与主题主色同向）；
+ * - 色相用黄金角递推 hᵢ = (h₀ + i × 137.508°) mod 360°，让靠前的服务器尽量拉开，
+ *   靠后的颜色即使相近也没关系；
+ * - 亮度 / 彩度不在这里定，交给 CSS 按明暗主题设定，从而保持清淡柔和。
+ */
+const GOLDEN_ANGLE = 137.508;
+const START_HUE = 290; // 起始色相：与主题主色（紫）同向
+
+export function buildServerHueMap(worldNames: string[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const world of worldNames) {
+    if (!world || map.has(world)) continue; // 首次出现即分配，后续重复忽略
+    map.set(world, (START_HUE + map.size * GOLDEN_ANGLE) % 360);
+  }
+  return map;
+}

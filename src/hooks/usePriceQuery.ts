@@ -51,7 +51,7 @@ function buildMerged(
 
 /**
  * Universalis 查价 Hook
- * - 出售列表：查询时立即请求（120 条），带内存缓存。
+ * - 出售列表：查询时立即请求（60 条），带内存缓存。
  * - 交易历史：不再随查价直接请求，改为调用方在需要时经 fetchPriceHistory 懒加载
  *   （/api/v2/history/{area}/{id}?entriesToReturn=120），同样带内存缓存。
  */
@@ -128,8 +128,8 @@ export function usePriceQuery() {
     const path = REGION_MAP[regionKey] ?? regionKey;
     const hqParam = hqOnly ? "&hq=true" : "";
 
-    // 出售列表：120 条、不带交易历史（entries=0，加速访问）
-    fetch(`${UNIVERSALIS_BASE}/api/v2/${path}/${itemId}?listings=120&entries=0${hqParam}`)
+    // 出售列表：60 条、不带交易历史（entries=0，加速访问）
+    fetch(`${UNIVERSALIS_BASE}/api/v2/${path}/${itemId}?listings=60&entries=0${hqParam}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<UniversalisResponse>;

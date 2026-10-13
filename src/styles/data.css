@@ -390,20 +390,7 @@
   border: none;
 }
 
-/* ===== 最低单价前三高亮 ===== */
-.top-three-row {
-  background: linear-gradient(
-    90deg,
-    rgba(139, 92, 246, 0.06) 0%,
-    rgba(139, 92, 246, 0.02) 100%
-  );
-}
-
-.top-three-row .world-name {
-  color: var(--accent);
-  font-weight: 700;
-}
-
+/* ===== 最低单价前三：仅保留绿色单价，不再高亮整行 ===== */
 .top-three-row .price-cell {
   color: var(--stat-green);
   font-weight: 800;
@@ -412,14 +399,6 @@
 .top-three-row .price-cell .gil-suffix {
   color: var(--stat-green);
   opacity: 0.6;
-}
-
-.top-three-row:hover {
-  background: linear-gradient(
-    90deg,
-    rgba(139, 92, 246, 0.12) 0%,
-    rgba(139, 92, 246, 0.04) 100%
-  ) !important;
 }
 
 /* ===== 行情概览卡片 ===== */
@@ -568,6 +547,27 @@
   transition: background 0.15s ease;
 }
 
+/* 服务器名整体染色：色相按「当前页显示的服务器」动态生成，同页同服务器同色。
+   与主题高对比文字色 color-mix 混合：亮色主题自动偏深、暗色主题自动偏亮，无需分主题各写一份。
+   仅在 .server-colored（出售列表）下生效；未设 --server-hue 时声明无效 → 交易历史保持原样。 */
+
+.server-colored .world-label {
+  display: inline-block;
+  box-sizing: border-box;
+  /* 国服服务器名为 2–4 字：min-width 需盖住 4 字（4em 文字 + 0.6em 内边距），让底色宽度完全一致 */
+  min-width: 4.7em;
+  padding: 1px 0.3em;
+  border-radius: 6px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--bg-card);
+  background: color-mix(in oklch, oklch(0.8 0.12 var(--server-hue)) 75%, var(--text-h));
+}
+
 .data-cell {
   padding: 0 8px;
   min-width: 0;
@@ -600,20 +600,7 @@
   background: var(--accent-bg);
 }
 
-/* 最低单价前三高亮 */
-.data-col .data-row.top-three-row {
-  background: linear-gradient(90deg, rgba(139, 92, 246, 0.07), rgba(139, 92, 246, 0.02));
-}
-
-.data-col .data-row.top-three-row:hover {
-  background: linear-gradient(90deg, rgba(139, 92, 246, 0.13), rgba(139, 92, 246, 0.05));
-}
-
-.data-row.top-three-row .world-name {
-  color: var(--accent);
-  font-weight: 700;
-}
-
+/* 最低单价前三：仅绿色单价（不再高亮整行） */
 .data-row.top-three-row .price-cell {
   color: var(--stat-green);
   font-weight: 800;
@@ -890,10 +877,6 @@
   border: 1px solid var(--border-light);
   border-radius: 12px;
   background: var(--bg-card);
-}
-
-.data-mobile-item.top-three-row {
-  background: linear-gradient(90deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.02));
 }
 
 .data-mobile-line {

@@ -1,8 +1,8 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
-import { listingFields, historyFields, renderWorldName, formatTradeTime, formatRelativeTime, type GridField } from "../columns";
+import { listingFields, historyFields, buildServerHueMap, renderWorldName, formatTradeTime, formatRelativeTime, type GridField } from "../columns";
 import type { DcName } from "../constants";
 import type { DcServerMap } from "../hooks/useRegionScope";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
@@ -11,19 +11,29 @@ import { RegionSelector } from "./RegionSelector";
 // 价格走势/购买建议（含 chart.js）按需加载：仅搜索后渲染时才下载对应 chunk
 const StatsChart = lazy(() => import("./StatsChart").then((m) => ({ default: m.StatsChart })));
 
-/** 移动端分页列表：每页 15 条，数据/标签变化时通过 key 重置回第一页 */
-function MobilePagedList<T>({ items, renderItem }: {
+/**
+ * 移动端分页列表：每页 15 条，数据/标签变化时通过 key 重置回第一页。
+ * groupKey 存在时，按「当前页显示的服务器」动态算出色相并回传给 renderItem。
+ */
+function MobilePagedList<T>({ items, renderItem, groupKey }: {
   items: T[];
-  renderItem: (item: T, globalIndex: number) => ReactNode;
+  renderItem: (item: T, globalIndex: number, hue?: number) => ReactNode;
+  groupKey?: (item: T) => string;
 }) {
   const [page, setPage] = useState(1);
   const maxPage = Math.max(1, Math.ceil(items.length / 15));
   const current = Math.min(page, maxPage);
   const pageItems = items.slice((current - 1) * 15, current * 15);
+  // 只统计本页出现的服务器：颜色数量少、彼此更易区分
+  const hueMap = groupKey ? buildServerHueMap(pageItems.map(groupKey)) : null;
   return (
     <div className="data-mobile-list">
-      {pageItems.map((item, i) => renderItem(item, (current - 1) * 15 + i))}
-      <Pagination simple current={current} pageSize={15} total={items.length} onChange={setPage} />
+      {pageItems.map((item, i) => {
+        const gi = (current - 1) * 15 + i;
+        const hue = hueMap && groupKey ? hueMap.get(groupKey(item)) : undefined;
+        return renderItem(item, gi, hue);
+      })}
+      <Pagination current={current} pageSize={15} total={items.length} onChange={setPage} />
     </div>
   );
 }
@@ -36,11 +46,14 @@ function TwoColumnGrid<T extends object>({
   fields,
   rowKey,
   rowClassName,
+  groupKey,
 }: {
   items: T[];
   fields: GridField<T>[];
   rowKey: (record: T) => string;
   rowClassName?: (record: T, globalIndex: number) => string;
+  /** 分组键（如服务器名）：按「当前页显示的服务器」动态生成色条色相 */
+  groupKey?: (record: T) => string;
 }) {
   const [page, setPage] = useState(1);
   const perPage = ROWS_PER_COLUMN * 2;
@@ -51,17 +64,24 @@ function TwoColumnGrid<T extends object>({
   const right = items.slice(start + ROWS_PER_COLUMN, start + perPage);
   const template = fields.map((f) => f.width).join(" ");
   const alignClass = (a?: string) => (a ? ` align-${a}` : "");
+  // 只统计当前页（两列合计）出现的服务器：颜色数量少、彼此更易区分
+  const hueMap = groupKey ? buildServerHueMap([...left, ...right].map(groupKey)) : null;
 
   /** 渲染其中一列；offset 为全局序号偏移，用于行高亮 */
   const renderColumn = (data: T[], offset: number) => (
     <div className="data-col">
       {data.map((record, i) => {
         const gi = offset + i;
+        const hue = hueMap && groupKey ? hueMap.get(groupKey(record)) : undefined;
+        const style = {
+          gridTemplateColumns: template,
+          ...(hue !== undefined ? { "--server-hue": String(hue) } : {}),
+        } as CSSProperties;
         return (
           <div
             key={rowKey(record)}
-            className={`data-row${rowClassName ? ` ${rowClassName(record, gi)}` : ""}`}
-            style={{ gridTemplateColumns: template }}
+            className={`data-row${rowClassName ? ` ${rowClassName(record, gi)}` : ""}${hue !== undefined ? " server-colored" : ""}`}
+            style={style}
           >
             {fields.map((f, ci) => (
               <div key={ci} className={`data-cell${alignClass(f.align)}`}>{f.render(record)}</div>
@@ -186,14 +206,20 @@ export function PriceSection({
             fields={listingCols}
             rowKey={(l) => l.listingID ?? `${l.worldName}-${l.pricePerUnit}-${l.quantity}-${l.hq}`}
             rowClassName={(_, index) => (index < 3 ? "top-three-row" : "")}
+            groupKey={(l) => l.worldName}
           />
         </div>
         <div className="data-mobile-table">
           <MobilePagedList
             key={`${selectedItem.row_id}-${scope}-listings`}
             items={priceData.listings}
-            renderItem={(item, index) => (
-              <div key={index} className={`data-mobile-item${index < 3 ? " top-three-row" : ""}`}>
+            groupKey={(l) => l.worldName}
+            renderItem={(item, index, hue) => (
+              <div
+                key={index}
+                className={`data-mobile-item${index < 3 ? " top-three-row" : ""}${hue !== undefined ? " server-colored" : ""}`}
+                style={hue !== undefined ? ({ "--server-hue": String(hue) } as CSSProperties) : undefined}
+              >
                 <div className="data-mobile-line">
                   {renderWorldName(item.worldName)}
                   {item.hq
@@ -228,14 +254,20 @@ export function PriceSection({
             items={priceData.recentHistory}
             fields={historyCols}
             rowKey={(h) => `${h.timestamp}-${h.worldName}-${h.pricePerUnit}-${h.quantity}-${h.hq}`}
+            groupKey={(h) => h.worldName}
           />
         </div>
         <div className="data-mobile-table">
           <MobilePagedList
             key={`${selectedItem.row_id}-${scope}-history`}
             items={priceData.recentHistory}
-            renderItem={(item) => (
-              <div key={item.timestamp + item.worldName + item.pricePerUnit} className="data-mobile-item">
+            groupKey={(h) => h.worldName}
+            renderItem={(item, _index, hue) => (
+              <div
+                key={item.timestamp + item.worldName + item.pricePerUnit}
+                className={`data-mobile-item${hue !== undefined ? " server-colored" : ""}`}
+                style={hue !== undefined ? ({ "--server-hue": String(hue) } as CSSProperties) : undefined}
+              >
                 <div className="data-mobile-line">
                   {renderWorldName(item.worldName)}
                   {item.hq
