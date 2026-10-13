@@ -23,19 +23,42 @@ export const formatTradeTime = (v: number) =>
     minute: "2-digit",
   });
 
-export const listingColumns = [
+/**
+ * 相对时间（xx分前）：传入 Unix 秒时间戳与「当前时间」（毫秒），
+ * 用于挂单的「更新时间」。不足 1 分钟显示「刚刚」。
+ */
+export const formatRelativeTime = (tsSec: number, nowMs: number = Date.now()): string => {
+  if (!tsSec) return "-";
+  const diff = nowMs - tsSec * 1000;
+  if (diff < 60_000) return "刚刚";
+  const min = Math.floor(diff / 60_000);
+  if (min < 60) return `${min}分前`;
+  const hour = Math.floor(min / 60);
+  if (hour < 24) return `${hour}小时前`;
+  const day = Math.floor(hour / 24);
+  if (day < 30) return `${day}天前`;
+  const month = Math.floor(day / 30);
+  if (month < 12) return `${month}个月前`;
+  return `${Math.floor(month / 12)}年前`;
+};
+
+/**
+ * 出售列表列定义。桌面端为两列并排展示，列宽收窄以适配半宽；
+ * 「更新时间」基于挂单的 lastReviewTime 显示相对时间，随传入的 nowMs 刷新。
+ */
+export const buildListingColumns = (nowMs: number = Date.now()) => [
   {
     title: "服务器",
     dataIndex: "worldName",
     key: "worldName",
-    width: 110,
+    width: 80,
     render: renderWorldName,
   },
   {
     title: "品质",
     dataIndex: "hq",
     key: "hq",
-    width: 56,
+    width: 40,
     align: "center" as const,
     render: (v: boolean) =>
       v ? (
@@ -50,7 +73,7 @@ export const listingColumns = [
     title: "单价",
     dataIndex: "pricePerUnit",
     key: "pricePerUnit",
-    width: 120,
+    width: 104,
     render: (v: number) => (
       <span className="price-cell">
         {formatPrice(v, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
@@ -61,18 +84,27 @@ export const listingColumns = [
     title: "数量",
     dataIndex: "quantity",
     key: "quantity",
-    width: 64,
+    width: 52,
     align: "center" as const,
   },
   {
     title: "总计",
     dataIndex: "total",
     key: "total",
-    width: 110,
+    width: 104,
     render: (v: number) => (
       <span className="total-cell">
         {formatPrice(v, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
       </span>
+    ),
+  },
+  {
+    title: "更新时间",
+    dataIndex: "lastReviewTime",
+    key: "lastReviewTime",
+    width: 84,
+    render: (v: number) => (
+      <span className="time-cell relative-time">{formatRelativeTime(v, nowMs)}</span>
     ),
   },
 ];
@@ -82,14 +114,14 @@ export const historyColumns = [
     title: "服务器",
     dataIndex: "worldName",
     key: "worldName",
-    width: 100,
+    width: 80,
     render: renderWorldName,
   },
   {
     title: "品质",
     dataIndex: "hq",
     key: "hq",
-    width: 56,
+    width: 40,
     align: "center" as const,
     render: (v: boolean) =>
       v ? (
@@ -104,7 +136,7 @@ export const historyColumns = [
     title: "单价",
     dataIndex: "pricePerUnit",
     key: "pricePerUnit",
-    width: 110,
+    width: 104,
     render: (v: number) => (
       <span className="price-cell">
         {formatPrice(v, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
@@ -115,21 +147,21 @@ export const historyColumns = [
     title: "数量",
     dataIndex: "quantity",
     key: "quantity",
-    width: 56,
+    width: 52,
     align: "center" as const,
   },
   {
     title: "买家",
     dataIndex: "buyerName",
     key: "buyerName",
-    width: 110,
+    width: 84,
     ellipsis: true,
   },
   {
     title: "日期",
     dataIndex: "timestamp",
     key: "timestamp",
-    width: 130,
+    width: 100,
     render: (v: number) => (
       <span className="time-cell">{formatTradeTime(v)}</span>
     ),

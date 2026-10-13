@@ -16,6 +16,8 @@ export interface UniversalisListing {
   pricePerUnit: number;
   quantity: number;
   total: number;
+  /** 该挂单最近一次被刷新的时间（Unix 秒，用于「更新时间」展示） */
+  lastReviewTime?: number;
 }
 
 export interface UniversalisHistory {
@@ -23,7 +25,8 @@ export interface UniversalisHistory {
   hq: boolean;
   pricePerUnit: number;
   quantity: number;
-  total: number;
+  /** 历史接口（/api/v2/history）不返回该字段，故可选 */
+  total?: number;
   buyerName: string;
   timestamp: number;
   /** 是否从人偶展示架购买（可能为 null/undefined）；统计时应过滤 */
@@ -34,8 +37,19 @@ export interface UniversalisResponse {
   itemID?: number;
   /** 单服务器查询时顶层返回的服务器名（大区/中国查询时可能缺失，条目级 worldName 会补全） */
   worldName?: string;
+  /** 行情数据最近上传时间（毫秒） */
+  lastUploadTime?: number;
   listings?: UniversalisListing[];
   recentHistory?: UniversalisHistory[];
+}
+
+// ---- Universalis 交易历史（/api/v2/history/{area}/{id}） ----
+export interface UniversalisHistoryResponse {
+  itemID?: number;
+  /** 单服务器查询时顶层返回的服务器名（大区/中国查询时条目级 worldName 自带） */
+  worldName?: string;
+  lastUploadTime?: number;
+  entries?: UniversalisHistory[];
 }
 
 // ---- 本地物品数据库 ----

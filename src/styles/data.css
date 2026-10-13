@@ -495,14 +495,42 @@
   opacity: 0.5;
 }
 
-/* ===== 移动端视图切换 ===== */
-.view-tab-bar {
-  display: none;
-  margin-bottom: 12px;
+/* ===== 出售列表标题栏「交易历史」切换按钮 ===== */
+.data-card-toggle.ant-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding-inline: 8px;
 }
 
-.data-row-mobile {
-  display: none;
+.relative-time {
+  white-space: nowrap;
+}
+
+/* ===== 桌面端两列并排表格（出售列表 / 交易历史） ===== */
+.data-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.data-col {
+  min-width: 0;
+}
+
+.data-two-col .ant-table {
+  font-size: 13px;
+}
+
+.data-two-col .ant-table-thead > tr > th,
+.data-two-col .ant-table-tbody > tr > td {
+  padding: 7px 8px !important;
+}
+
+.data-two-col-pagination {
+  grid-column: 1 / -1;
+  text-align: center;
+  margin-top: 4px;
 }
 
 /* ===== 空状态 / 加载 ===== */
@@ -525,18 +553,7 @@
   padding: 48px 0;
 }
 
-/* ===== 响应式 ===== */
-@media (max-width: 992px) {
-  .view-tab-bar {
-    display: block;
-  }
-  .data-row-desktop {
-    display: none;
-  }
-  .data-row-mobile {
-    display: block;
-  }
-}
+/* ===== 响应式（出售列表/交易历史的桌面双表与移动列表切换见文件末尾） ===== */
 
 @media (max-width: 768px) {
   /* 移动端不显示顶部物品名称（保留 ID/Universalis/Wiki 信息标签） */

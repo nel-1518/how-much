@@ -1,8 +1,8 @@
-import { lazy, Suspense, useState, type ReactNode } from "react";
-import { Typography, Skeleton, Segmented, Row, Col, Card, Table, Empty, Tag, message, Pagination } from "antd";
+import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Typography, Skeleton, Card, Table, Empty, Tag, Button, message, Pagination, type TableColumnsType } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
-import { listingColumns, historyColumns, renderWorldName, formatTradeTime } from "../columns";
+import { buildListingColumns, historyColumns, renderWorldName, formatTradeTime, formatRelativeTime } from "../columns";
 import type { DcName } from "../constants";
 import type { DcServerMap } from "../hooks/useRegionScope";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
@@ -28,6 +28,58 @@ function MobilePagedList<T>({ items, renderItem }: {
   );
 }
 
+/** 桌面端数据表：两列并排，共用分页（默认每列 15 条，一页 30 条） */
+const ROWS_PER_COLUMN = 15;
+
+function TwoColumnTable<T extends object>({
+  items,
+  columns,
+  rowClassName,
+}: {
+  items: T[];
+  columns: TableColumnsType<T>;
+  rowClassName?: (record: T, globalIndex: number) => string;
+}) {
+  const [page, setPage] = useState(1);
+  const perPage = ROWS_PER_COLUMN * 2;
+  const maxPage = Math.max(1, Math.ceil(items.length / perPage));
+  const current = Math.min(page, maxPage);
+  const start = (current - 1) * perPage;
+  const left = items.slice(start, start + ROWS_PER_COLUMN);
+  const right = items.slice(start + ROWS_PER_COLUMN, start + perPage);
+
+  /** 渲染其中一列；offset 为全局序号偏移，用于 rowKey 与行高亮 */
+  const renderColumn = (data: T[], offset: number) => (
+    <div className="data-col">
+      <Table<T>
+        dataSource={data}
+        columns={columns}
+        rowKey={(_, i) => String(offset + (i ?? 0))}
+        size="small"
+        pagination={false}
+        rowClassName={(record, index) => (rowClassName ? rowClassName(record, offset + index) : "")}
+      />
+    </div>
+  );
+
+  return (
+    <div className="data-two-col">
+      {renderColumn(left, start)}
+      {renderColumn(right, start + ROWS_PER_COLUMN)}
+      {items.length > perPage && (
+        <Pagination
+          className="data-two-col-pagination"
+          current={current}
+          pageSize={perPage}
+          total={items.length}
+          onChange={setPage}
+          showSizeChanger={false}
+        />
+      )}
+    </div>
+  );
+}
+
 interface PriceSectionProps {
   selectedItem: ItemResult;
   /** 当前查询目标："中国" | 大区名 | 服务器名 */
@@ -40,6 +92,8 @@ interface PriceSectionProps {
   listingsLoading: boolean;
   historyLoading: boolean;
   fetchPriceData: (id: number, region: string, name?: string, hqOnly?: boolean) => void;
+  /** 交易历史懒加载：点击标题栏「交易历史」按钮时请求 */
+  fetchPriceHistory: (id: number, region: string) => void;
   viewTab: string;
   onViewTabChange: (v: string) => void;
   onWiki: (name: string) => void;
@@ -50,122 +104,154 @@ interface PriceSectionProps {
 /** 查价结果展示组件：大区/服务器选择栏 + 查价结果 / 价格走势与购买建议 */
 export function PriceSection({
   selectedItem, scope, dcServer, onScopeChange, onSelectServer,
-  priceData, listingsLoading, historyLoading, fetchPriceData,
+  priceData, listingsLoading, historyLoading, fetchPriceData, fetchPriceHistory,
   viewTab, onViewTabChange, onWiki, isDark,
 }: PriceSectionProps) {
   // 只看 HQ 开关（物品存在 HQ 品质时才可用）
   const [hqOnly, setHqOnly] = useState(false);
+  // 相对时间（xx分前）定时刷新：每 30 秒更新一次基准时间
+  const [nowTs, setNowTs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowTs(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const listingCols = useMemo(() => buildListingColumns(nowTs), [nowTs]);
 
   const canBeHq = selectedItem.canBeHq === true;
+  // 当前展示：出售列表 / 交易历史（交易历史由标题栏按钮切换并懒加载）
+  const showHistory = viewTab === "history";
 
-  /** 查询目标变化（"中国"/大区）：更新全局状态并重新查价 */
+  /** 查询目标变化（"中国"/大区）：更新全局状态并重新查价；若正在看历史则同步刷新历史 */
   const handleScopeChange = (next: string) => {
     onScopeChange(next);
     fetchPriceData(selectedItem.row_id, next, selectedItem.fields.Name, hqOnly);
+    if (showHistory) fetchPriceHistory(selectedItem.row_id, next);
   };
 
-  /** 选择某大区下的服务器：更新全局状态并重新查价 */
+  /** 选择某大区下的服务器：更新全局状态并重新查价；若正在看历史则同步刷新历史 */
   const handleSelectServer = (dc: DcName, world: string) => {
     onSelectServer(dc, world);
     fetchPriceData(selectedItem.row_id, world, selectedItem.fields.Name, hqOnly);
+    if (showHistory) fetchPriceHistory(selectedItem.row_id, world);
   };
 
-  /** 只看 HQ 开关：切换后带 hq 参数重新请求 */
+  /** 只看 HQ 开关：切换后带 hq 参数重新请求（不影响交易历史接口） */
   const handleHqOnlyToggle = (checked: boolean) => {
     setHqOnly(checked);
     fetchPriceData(selectedItem.row_id, scope, selectedItem.fields.Name, checked);
   };
 
-  const listingCard = () => (
-    <Card
-      title={<><ShoppingCartOutlined /> 出售列表</>}
-      size="small" className="data-card"
-    >
-      {listingsLoading ? (
-        <Skeleton active paragraph={{ rows: 10 }} title={false} />
-      ) : priceData?.listings?.length ? (
-        <>
-          <div className="data-table-desktop">
-            <Table
-              dataSource={priceData.listings} columns={listingColumns}
-              rowKey={(_, i) => String(i)} size="small"
-              pagination={{ pageSize: 15, showSizeChanger: false }}
-              scroll={{ x: 450 }}
-              rowClassName={(_, index) => index < 3 ? "top-three-row" : ""}
-            />
-          </div>
-          <div className="data-mobile-table">
-            <MobilePagedList
-              key={`${selectedItem.row_id}-${viewTab}`}
-              items={priceData.listings}
-              renderItem={(item, index) => (
-                <div key={index} className={`data-mobile-item${index < 3 ? " top-three-row" : ""}`}>
-                  <div className="data-mobile-line">
-                    {renderWorldName(item.worldName)}
-                    {item.hq
-                      ? <Tag color="gold" className="hq-tag">HQ</Tag>
-                      : <Tag className="nq-tag">NQ</Tag>}
-                  </div>
-                  <div className="data-mobile-line">
-                    <span className="price-cell">
-                      {formatPrice(item.pricePerUnit, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
-                    </span>
-                    <span className="data-mobile-meta">×{item.quantity} · 总计 {formatPrice(item.total, getCurrentPriceFormat())} Gil</span>
-                  </div>
-                </div>
-              )}
-            />
-          </div>
-        </>
-      ) : <Empty description="暂无出售数据" />}
-    </Card>
-  );
+  /** 标题栏「交易历史」按钮：切换展示，首次点击时懒加载历史数据 */
+  const handleToggleHistory = () => {
+    if (showHistory) {
+      onViewTabChange("listings");
+    } else {
+      onViewTabChange("history");
+      fetchPriceHistory(selectedItem.row_id, scope);
+    }
+  };
 
-  const historyCard = () => (
-    <Card
-      title={<><HistoryOutlined /> 交易历史</>}
-      size="small" className="data-card"
-    >
-      {historyLoading ? (
-        <Skeleton active paragraph={{ rows: 9 }} title={false} />
-      ) : priceData?.recentHistory?.length ? (
-        <>
-          <div className="data-table-desktop">
-            <Table
-              dataSource={priceData.recentHistory} columns={historyColumns}
-              rowKey={(_, i) => String(i)} size="small"
-              pagination={{ pageSize: 15, showSizeChanger: false }}
-              scroll={{ x: 550 }}
-            />
-          </div>
-          <div className="data-mobile-table">
-            <MobilePagedList
-              key={`${selectedItem.row_id}-${viewTab}`}
-              items={priceData.recentHistory}
-              renderItem={(item) => (
-                <div key={item.timestamp + item.worldName + item.pricePerUnit} className="data-mobile-item">
-                  <div className="data-mobile-line">
-                    {renderWorldName(item.worldName)}
-                    {item.hq
-                      ? <Tag color="gold" className="hq-tag">HQ</Tag>
-                      : <Tag className="nq-tag">NQ</Tag>}
-                  </div>
-                  <div className="data-mobile-line">
-                    <span className="price-cell">
-                      {formatPrice(item.pricePerUnit, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
-                    </span>
-                    <span className="data-mobile-meta">数量 ×{item.quantity}</span>
-                  </div>
-                  <div className="data-mobile-line data-mobile-sub">
-                    <span className="data-mobile-meta">{item.buyerName}</span>
-                    <span className="time-cell">{formatTradeTime(item.timestamp)}</span>
-                  </div>
+  /** 出售列表内容：桌面端两列并排 + 移动端单列分页 */
+  const listingsBody = () => {
+    if (listingsLoading) return <Skeleton active paragraph={{ rows: 10 }} title={false} />;
+    if (!priceData?.listings?.length) return <Empty description="暂无出售数据" />;
+    return (
+      <>
+        <div className="data-table-desktop">
+          <TwoColumnTable
+            items={priceData.listings}
+            columns={listingCols}
+            rowClassName={(_, index) => (index < 3 ? "top-three-row" : "")}
+          />
+        </div>
+        <div className="data-mobile-table">
+          <MobilePagedList
+            key={`${selectedItem.row_id}-${scope}-listings`}
+            items={priceData.listings}
+            renderItem={(item, index) => (
+              <div key={index} className={`data-mobile-item${index < 3 ? " top-three-row" : ""}`}>
+                <div className="data-mobile-line">
+                  {renderWorldName(item.worldName)}
+                  {item.hq
+                    ? <Tag color="gold" className="hq-tag">HQ</Tag>
+                    : <Tag className="nq-tag">NQ</Tag>}
                 </div>
-              )}
-            />
-          </div>
-        </>
-      ) : <Empty description="暂无交易记录" />}
+                <div className="data-mobile-line">
+                  <span className="price-cell">
+                    {formatPrice(item.pricePerUnit, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
+                  </span>
+                  <span className="data-mobile-meta">×{item.quantity} · 总计 {formatPrice(item.total, getCurrentPriceFormat())} Gil</span>
+                </div>
+                <div className="data-mobile-line data-mobile-sub">
+                  <span className="data-mobile-meta">更新时间 {formatRelativeTime(item.lastReviewTime ?? 0, nowTs)}</span>
+                </div>
+              </div>
+            )}
+          />
+        </div>
+      </>
+    );
+  };
+
+  /** 交易历史内容：桌面端表格 + 移动端单列分页 */
+  const historyBody = () => {
+    if (historyLoading) return <Skeleton active paragraph={{ rows: 9 }} title={false} />;
+    if (!priceData?.recentHistory?.length) return <Empty description="暂无交易记录" />;
+    return (
+      <>
+        <div className="data-table-desktop">
+          <TwoColumnTable items={priceData.recentHistory} columns={historyColumns} />
+        </div>
+        <div className="data-mobile-table">
+          <MobilePagedList
+            key={`${selectedItem.row_id}-${scope}-history`}
+            items={priceData.recentHistory}
+            renderItem={(item) => (
+              <div key={item.timestamp + item.worldName + item.pricePerUnit} className="data-mobile-item">
+                <div className="data-mobile-line">
+                  {renderWorldName(item.worldName)}
+                  {item.hq
+                    ? <Tag color="gold" className="hq-tag">HQ</Tag>
+                    : <Tag className="nq-tag">NQ</Tag>}
+                </div>
+                <div className="data-mobile-line">
+                  <span className="price-cell">
+                    {formatPrice(item.pricePerUnit, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
+                  </span>
+                  <span className="data-mobile-meta">数量 ×{item.quantity}</span>
+                </div>
+                <div className="data-mobile-line data-mobile-sub">
+                  <span className="data-mobile-meta">{item.buyerName}</span>
+                  <span className="time-cell">{formatTradeTime(item.timestamp)}</span>
+                </div>
+              </div>
+            )}
+          />
+        </div>
+      </>
+    );
+  };
+
+  const dataCard = () => (
+    <Card
+      title={<>{showHistory ? <HistoryOutlined /> : <ShoppingCartOutlined />} {showHistory ? "交易历史" : "出售列表"}</>}
+      size="small"
+      className="data-card"
+      extra={
+        <Button
+          type="text"
+          size="small"
+          className="data-card-toggle"
+          icon={showHistory ? <ShoppingCartOutlined /> : <HistoryOutlined />}
+          onClick={handleToggleHistory}
+        >
+          {showHistory ? "出售列表" : "交易历史"}
+        </Button>
+      }
+    >
+      {showHistory ? historyBody() : listingsBody()}
     </Card>
   );
 
@@ -235,31 +321,9 @@ export function PriceSection({
         onHqOnlyChange={handleHqOnlyToggle}
       />
 
-      {/* 模块一：查价结果 */}
+      {/* 模块一：查价结果（出售列表 / 交易历史，标题栏按钮切换） */}
       <section className="price-module">
-        {/* 移动端：切换 tabs */}
-        <div className="view-tab-bar">
-          <Segmented
-            value={viewTab} onChange={(v) => onViewTabChange(v as string)}
-            options={[
-              { label: <><ShoppingCartOutlined /> 出售列表</>, value: "listings" },
-              { label: <><HistoryOutlined /> 交易历史</>, value: "history" },
-            ]}
-            block
-          />
-        </div>
-
-        {/* 桌面端：双列 */}
-        <Row gutter={[16, 16]} className="data-row-desktop">
-          <Col xs={24} lg={12}>{listingCard()}</Col>
-          <Col xs={24} lg={12}>{historyCard()}</Col>
-        </Row>
-
-        {/* 移动端：单列切换 */}
-        <div className="data-row-mobile">
-          {viewTab === "listings" && listingCard()}
-          {viewTab === "history" && historyCard()}
-        </div>
+        {dataCard()}
       </section>
 
       {/* 模块二：价格走势与购买建议（合并，建议历史统计来自服务端，挂单来自查价） */}
