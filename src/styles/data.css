@@ -153,6 +153,19 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* 内联到物品标题行（靠右）：去掉独立卡片的背景/边框/内边距以压缩高度 */
+.price-header .region-selector-bar {
+  padding: 0;
+  margin-bottom: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+}
+
 .region-drop-btn {
   display: inline-flex;
   align-items: center;

@@ -18,6 +18,8 @@ export interface UniversalisListing {
   total: number;
   /** 该挂单最近一次被刷新的时间（Unix 秒，用于「更新时间」展示） */
   lastReviewTime?: number;
+  /** 挂单唯一 ID（来自 Universalis，用于列表 rowKey） */
+  listingID?: string;
 }
 
 export interface UniversalisHistory {

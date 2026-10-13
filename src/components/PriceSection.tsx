@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Typography, Skeleton, Card, Table, Empty, Tag, Button, message, Pagination, type TableColumnsType } from "antd";
-import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined } from "@ant-design/icons";
+import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
 import { buildListingColumns, historyColumns, renderWorldName, formatTradeTime, formatRelativeTime } from "../columns";
 import type { DcName } from "../constants";
@@ -34,10 +34,12 @@ const ROWS_PER_COLUMN = 15;
 function TwoColumnTable<T extends object>({
   items,
   columns,
+  rowKey,
   rowClassName,
 }: {
   items: T[];
   columns: TableColumnsType<T>;
+  rowKey: (record: T) => string;
   rowClassName?: (record: T, globalIndex: number) => string;
 }) {
   const [page, setPage] = useState(1);
@@ -48,13 +50,13 @@ function TwoColumnTable<T extends object>({
   const left = items.slice(start, start + ROWS_PER_COLUMN);
   const right = items.slice(start + ROWS_PER_COLUMN, start + perPage);
 
-  /** 渲染其中一列；offset 为全局序号偏移，用于 rowKey 与行高亮 */
+  /** 渲染其中一列；offset 为全局序号偏移，用于行高亮 */
   const renderColumn = (data: T[], offset: number) => (
     <div className="data-col">
       <Table<T>
         dataSource={data}
         columns={columns}
-        rowKey={(_, i) => String(offset + (i ?? 0))}
+        rowKey={rowKey}
         size="small"
         pagination={false}
         rowClassName={(record, index) => (rowClassName ? rowClassName(record, offset + index) : "")}
@@ -163,6 +165,7 @@ export function PriceSection({
           <TwoColumnTable
             items={priceData.listings}
             columns={listingCols}
+            rowKey={(l) => l.listingID ?? `${l.worldName}-${l.pricePerUnit}-${l.quantity}-${l.hq}`}
             rowClassName={(_, index) => (index < 3 ? "top-three-row" : "")}
           />
         </div>
@@ -202,7 +205,11 @@ export function PriceSection({
     return (
       <>
         <div className="data-table-desktop">
-          <TwoColumnTable items={priceData.recentHistory} columns={historyColumns} />
+          <TwoColumnTable
+            items={priceData.recentHistory}
+            columns={historyColumns}
+            rowKey={(h) => `${h.timestamp}-${h.worldName}-${h.pricePerUnit}-${h.quantity}-${h.hq}`}
+          />
         </div>
         <div className="data-mobile-table">
           <MobilePagedList
@@ -244,10 +251,10 @@ export function PriceSection({
           type="text"
           size="small"
           className="data-card-toggle"
-          icon={showHistory ? <ShoppingCartOutlined /> : <HistoryOutlined />}
+          icon={<SwapOutlined />}
           onClick={handleToggleHistory}
+          title={showHistory ? "切换回出售列表" : "切换到交易历史"}
         >
-          {showHistory ? "出售列表" : "交易历史"}
         </Button>
       }
     >
@@ -308,18 +315,18 @@ export function PriceSection({
             </Tag>
           </div>
         </div>
-      </div>
 
-      {/* 大区/服务器选择栏 */}
-      <RegionSelector
-        scope={scope}
-        dcServer={dcServer}
-        hqOnly={hqOnly}
-        canBeHq={canBeHq}
-        onScopeChange={handleScopeChange}
-        onSelectServer={handleSelectServer}
-        onHqOnlyChange={handleHqOnlyToggle}
-      />
+        {/* 大区/服务器选择：与物品名/标签同行，靠右，节省高度 */}
+        <RegionSelector
+          scope={scope}
+          dcServer={dcServer}
+          hqOnly={hqOnly}
+          canBeHq={canBeHq}
+          onScopeChange={handleScopeChange}
+          onSelectServer={handleSelectServer}
+          onHqOnlyChange={handleHqOnlyToggle}
+        />
+      </div>
 
       {/* 模块一：查价结果（出售列表 / 交易历史，标题栏按钮切换） */}
       <section className="price-module">
