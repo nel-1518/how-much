@@ -5,9 +5,10 @@ import {
   SearchOutlined,
   DeleteOutlined,
   CheckOutlined,
-  PlusOutlined,
+  CloseOutlined,
   UnorderedListOutlined,
   SaveOutlined,
+  ExportOutlined,
 } from "@ant-design/icons";
 import type {
   BatchItem,
@@ -27,7 +28,8 @@ import type { DcServerMap } from "../hooks/useRegionScope";
 interface BatchItemDb {
   status: "loading" | "ready" | "error";
   ready: boolean;
-  searchByName: (query: string, limit?: number) => ItemDbEntry[];
+  /** 精确名称匹配（忽略大小写与 FF14 特殊字符），命中返回对应条目 */
+  findExactName: (query: string) => ItemDbEntry | undefined;
 }
 
 interface BatchPriceSectionProps {
@@ -78,13 +80,11 @@ interface ItemPrices {
   minQuality: "nq" | "hq" | null;
   minWorldId?: number;
   avgPrice: number | null;
-  velocity: number | null;
   lastUpload?: number;
 }
 
 /** 计算单个物品在指定范围/品质开关下的行情摘要（供表格行内展示） */
 function computePrices(
-  item: BatchItem,
   result: AggregatedItemResult | undefined,
   level: ScopeLevel,
   hqOnly: boolean,
@@ -112,36 +112,27 @@ function computePrices(
     }
   }
 
+  // 成交均价取当前展示品质（最低价对应的 NQ/HQ）的价格，而非默认 HQ
   const nqAvg = pickLevel(nq?.averageSalePrice, level)?.price;
   const hqAvg = pickLevel(hq?.averageSalePrice, level)?.price;
-  const avgPrice = hqOnly
-    ? (hqAvg != null ? hqAvg : null)
-    : item.canBeHq
-      ? (hqAvg != null ? hqAvg : (nqAvg != null ? nqAvg : null))
-      : (nqAvg != null ? nqAvg : (hqAvg != null ? hqAvg : null));
-
-  const nqVel = pickLevel(nq?.dailySaleVelocity, level)?.quantity;
-  const hqVel = pickLevel(hq?.dailySaleVelocity, level)?.quantity;
-  const velocity = hqOnly
-    ? (hqVel != null ? hqVel : null)
-    : item.canBeHq
-      ? (hqVel != null ? hqVel : (nqVel != null ? nqVel : null))
-      : (nqVel != null ? nqVel : (hqVel != null ? hqVel : null));
+  const avgPrice = minQuality === "hq"
+    ? (hqAvg ?? null)
+    : minQuality === "nq"
+      ? (nqAvg ?? null)
+      : (nqAvg ?? hqAvg ?? null);
 
   const lastUpload = result?.worldUploadTimes?.reduce((mx, t) => Math.max(mx, t.timestamp), 0);
-  return { minPrice, minQuality, minWorldId, avgPrice, velocity, lastUpload };
+  return { minPrice, minQuality, minWorldId, avgPrice, lastUpload };
 }
 
-/** 批量查价主视图：区服选择栏（顶部）+ 左搜索 / 右已选（行内价格） */
+/** 批量查价主视图：区服选择栏（顶部）+ 左批量输入 / 右已选（行内价格） */
 export function BatchPriceSection({
   scope, dcServer, onScopeChange, onSelectServer, itemDb, onOpenSingleItem,
 }: BatchPriceSectionProps) {
   const batch = useBatchPriceQuery();
   const { sets, saveSet, removeSet } = useSavedItemSets();
   const [hqOnly, setHqOnly] = useState(false);
-  const [query, setQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<ItemDbEntry[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [bulkInput, setBulkInput] = useState("");
   const [setName, setSetName] = useState("");
   const [loadedSetId, setLoadedSetId] = useState<string | undefined>(undefined);
 
@@ -165,37 +156,55 @@ export function BatchPriceSection({
     }
   }, [scope, batch.clearResults]);
 
-  // ---- 搜索 ----
-  const handleSearchChange = (v: string) => {
-    setQuery(v);
-    setActiveIndex(0);
-    const t = v.trim();
-    if (!t || !dbReady) { setSearchResults([]); return; }
-    setSearchResults(itemDb.searchByName(t, 20));
+  // ---- 批量输入解析与匹配 ----
+  // 每行一个物品名：后台对物品名做精确匹配，命中打勾、未命中打叉；命中项自动加入右侧已选
+  const { findExactName } = itemDb;
+  const parsedLines = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: { key: string; raw: string; entry: ItemDbEntry | null }[] = [];
+    for (const line of bulkInput.split(/\r?\n/)) {
+      const raw = line.trim();
+      if (!raw || seen.has(raw)) continue;
+      seen.add(raw);
+      rows.push({ key: raw, raw, entry: dbReady ? (findExactName(raw) ?? null) : null });
+    }
+    return rows;
+  }, [bulkInput, dbReady, findExactName]);
+
+  const matchedCount = parsedLines.reduce((n, r) => n + (r.entry ? 1 : 0), 0);
+
+  // 左侧行号栏：与输入框每一行严格对齐（wrap=off，故一逻辑行=一显示行）
+  // ok=命中打勾 / fail=未命中打叉 / empty=空行或数据库未就绪（占位保持对齐）
+  type LineMark = "ok" | "fail" | "empty";
+  const lineMarks = useMemo<LineMark[]>(
+    () =>
+      bulkInput.split(/\r?\n/).map((line) => {
+        const raw = line.trim();
+        if (!raw || !dbReady) return "empty";
+        return findExactName(raw) ? "ok" : "fail";
+      }),
+    [bulkInput, dbReady, findExactName],
+  );
+
+  // 输入框滚动时同步左侧标识栏，保证打勾/打叉始终贴合对应行
+  const gutterRef = useRef<HTMLDivElement>(null);
+  const handleEditorScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (gutterRef.current) gutterRef.current.scrollTop = e.currentTarget.scrollTop;
   };
 
-  const addEntry = (entry: ItemDbEntry) => {
-    batch.addByEntry({ id: entry.id, name: entry.name, canBeHq: entry.hq === 1 });
-  };
+  // 查价结果表格滚动容器（表头吸附其顶部，不随内容滚出）
+  const tableWrapRef = useRef<HTMLDivElement>(null);
 
-  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "ArrowDown") {
-      if (searchResults.length > 0) {
-        e.preventDefault();
-        setActiveIndex((p) => Math.min(p + 1, searchResults.length - 1));
-      }
-    } else if (e.key === "ArrowUp") {
-      if (searchResults.length > 0) {
-        e.preventDefault();
-        setActiveIndex((p) => Math.max(p - 1, 0));
-      }
-    } else if (e.key === "Enter") {
-      if (searchResults.length > 0) {
-        e.preventDefault();
-        addEntry(searchResults[activeIndex]);
+  // 命中的物品自动加入右侧已选（addByEntry 内部去重并遵守上限）
+  const addByEntry = batch.addByEntry;
+  useEffect(() => {
+    if (!dbReady) return;
+    for (const row of parsedLines) {
+      if (row.entry) {
+        addByEntry({ id: row.entry.id, name: row.entry.name, canBeHq: row.entry.hq === 1 });
       }
     }
-  };
+  }, [parsedLines, dbReady, addByEntry]);
 
   // ---- 结果映射 ----
   const resultMap = useMemo(() => {
@@ -226,6 +235,16 @@ export function BatchPriceSection({
     if (set) message.success("已删除物品集「" + set.name + "」");
   };
 
+  /** 复制物品名到剪贴板（点击物品名时触发） */
+  const handleCopyName = async (name: string) => {
+    try {
+      await navigator.clipboard.writeText(name);
+      message.success("已复制物品名：" + name);
+    } catch {
+      message.error("复制失败");
+    }
+  };
+
   // ---- 已选物品表格列 ----
   const columns: TableProps<BatchItem>["columns"] = [
     {
@@ -237,12 +256,11 @@ export function BatchPriceSection({
           <button
             type="button"
             className="batch-result-name"
-            onClick={() => onOpenSingleItem(item)}
-            title="查看单个查价详情"
+            onClick={() => handleCopyName(item.name)}
+            title="点击复制物品名"
           >
             {item.name}
           </button>
-          {item.canBeHq && <Tag color="gold" className="hq-tag">HQ</Tag>}
         </div>
       ),
     },
@@ -252,7 +270,7 @@ export function BatchPriceSection({
       width: 130,
       align: "right",
       render: (_, item) => {
-        const p = computePrices(item, resultMap.get(item.id), level, hqOnly);
+        const p = computePrices(resultMap.get(item.id), level, hqOnly);
         if (p.minPrice == null) return <span className="batch-result-na">—</span>;
         return <span className="batch-cell-price">{fmt(p.minPrice)}</span>;
       },
@@ -263,7 +281,7 @@ export function BatchPriceSection({
       width: 64,
       align: "center",
       render: (_, item) => {
-        const p = computePrices(item, resultMap.get(item.id), level, hqOnly);
+        const p = computePrices(resultMap.get(item.id), level, hqOnly);
         if (p.minPrice == null || !p.minQuality) return <span className="batch-result-na">—</span>;
         return (
           <Tag className={p.minQuality === "hq" ? "hq-tag" : "nq-tag"}>{p.minQuality.toUpperCase()}</Tag>
@@ -273,9 +291,9 @@ export function BatchPriceSection({
     {
       title: "服务器",
       key: "server",
-      width: 120,
+      width: 100,
       render: (_, item) => {
-        const p = computePrices(item, resultMap.get(item.id), level, hqOnly);
+        const p = computePrices(resultMap.get(item.id), level, hqOnly);
         if (p.minPrice == null) return <span className="batch-result-na">—</span>;
         const serverName = level === "world"
           ? scope
@@ -291,46 +309,45 @@ export function BatchPriceSection({
       width: 130,
       align: "right",
       render: (_, item) => {
-        const p = computePrices(item, resultMap.get(item.id), level, hqOnly);
+        const p = computePrices(resultMap.get(item.id), level, hqOnly);
         return p.avgPrice != null
           ? <span className="batch-cell-price">{fmtAvg(p.avgPrice)}</span>
           : <span className="batch-result-na">—</span>;
       },
     },
     {
-      title: "日销",
-      key: "velocity",
-      width: 80,
-      align: "center",
-      render: (_, item) => {
-        const p = computePrices(item, resultMap.get(item.id), level, hqOnly);
-        return p.velocity != null
-          ? p.velocity.toFixed(1)
-          : <span className="batch-result-na">—</span>;
-      },
-    },
-    {
       title: "更新时间",
       key: "updated",
-      width: 110,
+      width: 80,
+      align: "right",
       render: (_, item) => {
-        const p = computePrices(item, resultMap.get(item.id), level, hqOnly);
+        const p = computePrices(resultMap.get(item.id), level, hqOnly);
         return <span className="time-cell">{formatRelativeTime(p.lastUpload)}</span>;
       },
     },
     {
       title: "操作",
       key: "actions",
-      width: 56,
+      width: 88,
       align: "center",
       render: (_, item) => (
-        <Button
-          type="text"
-          size="small"
-          icon={<DeleteOutlined />}
-          aria-label={"移除 " + item.name}
-          onClick={() => batch.removeItem(item.id)}
-        />
+        <div className="batch-row-actions">
+          <Button
+            type="text"
+            size="small"
+            icon={<ExportOutlined />}
+            aria-label={"查看 " + item.name + " 的查价详情"}
+            title="查看单个查价详情"
+            onClick={() => onOpenSingleItem(item)}
+          />
+          <Button
+            type="text"
+            size="small"
+            icon={<DeleteOutlined />}
+            aria-label={"移除 " + item.name}
+            onClick={() => batch.removeItem(item.id)}
+          />
+        </div>
       ),
     },
   ];
@@ -348,49 +365,34 @@ export function BatchPriceSection({
       />
 
       <div className="batch-layout">
-        {/* 左：搜索物品 */}
+        {/* 左：批量输入物品 */}
         <section className="batch-card batch-col-left">
-          <div className="batch-card-title"><SearchOutlined /> 搜索物品</div>
-          <Input
-            className="batch-search-input"
-            placeholder={dbReady ? "输入物品名称，点击结果加入右侧" : itemDb.status === "loading" ? "物品数据库加载中…" : "物品数据库加载失败"}
-            prefix={<SearchOutlined />}
-            value={query}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            onKeyDown={handleSearchKeyDown}
-            allowClear
-            autoFocus
-          />
-          <div className="batch-search-results">
-            {!dbReady ? (
-              <Empty description={itemDb.status === "loading" ? "物品数据库加载中…" : "物品数据库加载失败"} />
-            ) : query.trim() === "" ? (
-              <Empty description="输入物品名称开始搜索" />
-            ) : searchResults.length === 0 ? (
-              <Empty description="未找到相关物品" />
-            ) : (
-              searchResults.map((entry, i) => {
-                const added = batch.items.some((it) => it.id === entry.id);
-                return (
-                  <div
-                    key={entry.id}
-                    className={
-                      "batch-search-item" +
-                      (i === activeIndex ? " active" : "") +
-                      (added ? " added" : "")
-                    }
-                    onClick={() => { if (!added) addEntry(entry); }}
-                    onMouseEnter={() => setActiveIndex(i)}
-                  >
-                    <span className="batch-search-name">{entry.name}</span>
-                    {entry.hq === 1 && <Tag color="gold" className="hq-tag">HQ</Tag>}
-                    <span className="batch-search-add">
-                      {added ? (<><CheckOutlined /> 已添加</>) : (<><PlusOutlined /> 添加</>)}
-                    </span>
-                  </div>
-                );
-              })
-            )}
+          <div className="batch-card-title">
+            <SearchOutlined /> 输入物品（{matchedCount}/{parsedLines.length} 已匹配）
+          </div>
+          <div className={"batch-editor" + (dbReady ? "" : " disabled")}>
+            <div className="batch-editor-gutter" ref={gutterRef} aria-hidden="true">
+              {lineMarks.map((mark, i) => (
+                <div key={i} className={"batch-editor-mark " + mark}>
+                  {mark === "ok" ? <CheckOutlined /> : mark === "fail" ? <CloseOutlined /> : null}
+                </div>
+              ))}
+            </div>
+            <Input.TextArea
+              className="batch-editor-input"
+              wrap="off"
+              placeholder={
+                dbReady
+                  ? "每行输入一个物品名称，自动匹配…"
+                  : itemDb.status === "loading"
+                    ? "物品数据库加载中…"
+                    : "物品数据库加载失败"
+              }
+              value={bulkInput}
+              onChange={(e) => setBulkInput(e.target.value)}
+              onScroll={handleEditorScroll}
+              autoFocus
+            />
           </div>
         </section>
 
@@ -398,9 +400,6 @@ export function BatchPriceSection({
         <section className="batch-card batch-col-right">
           <div className="batch-card-head">
             <span className="batch-card-title"><UnorderedListOutlined /> 已选物品（{batch.items.length}）</span>
-            <Button type="text" size="small" onClick={batch.clear} disabled={batch.items.length === 0}>
-              清空
-            </Button>
           </div>
 
           <div className="batch-save-row">
@@ -441,11 +440,11 @@ export function BatchPriceSection({
             </div>
           </div>
 
-          <div className="batch-table-wrap">
+          <div className="batch-table-wrap" ref={tableWrapRef}>
             {batch.loading ? (
               <div className="batch-results-loading"><Spin /></div>
             ) : batch.items.length === 0 ? (
-              <Empty description="点击左侧搜索结果添加物品" />
+              <Empty description="在左侧输入物品名称，匹配成功后自动加入" />
             ) : (
               <Table
                 rowKey="id"
@@ -453,7 +452,8 @@ export function BatchPriceSection({
                 columns={columns}
                 dataSource={batch.items}
                 pagination={false}
-                scroll={{ x: 880 }}
+                sticky={{ getContainer: () => tableWrapRef.current ?? window }}
+                scroll={{ x: 785 }}
               />
             )}
           </div>
@@ -468,15 +468,28 @@ export function BatchPriceSection({
             />
           )}
 
-          <Button
-            type="primary"
-            className="batch-query-btn"
-            disabled={batch.items.length === 0}
-            loading={batch.loading}
-            onClick={() => batch.query(scope)}
-          >
-            开始查价（{batch.items.length}）
-          </Button>
+          <div className="batch-actions">
+            <Button
+              type="primary"
+              className="batch-query-btn"
+              disabled={batch.items.length === 0}
+              loading={batch.loading}
+              onClick={() => batch.query(scope)}
+            >
+              开始查价（{batch.items.length}）
+            </Button>
+            <Popconfirm
+              title="确定清空已选物品？"
+              description="已选物品与查价结果都会被移除。"
+              okText="清空"
+              cancelText="取消"
+              okButtonProps={{ danger: true }}
+              onConfirm={batch.clear}
+              disabled={batch.items.length === 0}
+            >
+              <Button danger disabled={batch.items.length === 0}>清空</Button>
+            </Popconfirm>
+          </div>
         </section>
       </div>
     </div>
