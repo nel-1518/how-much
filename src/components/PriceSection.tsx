@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Typography, Skeleton, Card, Table, Empty, Tag, Button, message, Pagination, type TableColumnsType } from "antd";
+import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
-import { buildListingColumns, historyColumns, renderWorldName, formatTradeTime, formatRelativeTime } from "../columns";
+import { listingFields, historyFields, renderWorldName, formatTradeTime, formatRelativeTime, type GridField } from "../columns";
 import type { DcName } from "../constants";
 import type { DcServerMap } from "../hooks/useRegionScope";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
@@ -28,17 +28,17 @@ function MobilePagedList<T>({ items, renderItem }: {
   );
 }
 
-/** 桌面端数据表：两列并排，共用分页（默认每列 15 条，一页 30 条） */
+/** 桌面端两列网格：单一共享表头 + 两列数据（默认每列 15 条，一页 30 条） */
 const ROWS_PER_COLUMN = 15;
 
-function TwoColumnTable<T extends object>({
+function TwoColumnGrid<T extends object>({
   items,
-  columns,
+  fields,
   rowKey,
   rowClassName,
 }: {
   items: T[];
-  columns: TableColumnsType<T>;
+  fields: GridField<T>[];
   rowKey: (record: T) => string;
   rowClassName?: (record: T, globalIndex: number) => string;
 }) {
@@ -49,23 +49,41 @@ function TwoColumnTable<T extends object>({
   const start = (current - 1) * perPage;
   const left = items.slice(start, start + ROWS_PER_COLUMN);
   const right = items.slice(start + ROWS_PER_COLUMN, start + perPage);
+  const template = fields.map((f) => f.width).join(" ");
+  const alignClass = (a?: string) => (a ? ` align-${a}` : "");
 
   /** 渲染其中一列；offset 为全局序号偏移，用于行高亮 */
   const renderColumn = (data: T[], offset: number) => (
     <div className="data-col">
-      <Table<T>
-        dataSource={data}
-        columns={columns}
-        rowKey={rowKey}
-        size="small"
-        pagination={false}
-        rowClassName={(record, index) => (rowClassName ? rowClassName(record, offset + index) : "")}
-      />
+      {data.map((record, i) => {
+        const gi = offset + i;
+        return (
+          <div
+            key={rowKey(record)}
+            className={`data-row${rowClassName ? ` ${rowClassName(record, gi)}` : ""}`}
+            style={{ gridTemplateColumns: template }}
+          >
+            {fields.map((f, ci) => (
+              <div key={ci} className={`data-cell${alignClass(f.align)}`}>{f.render(record)}</div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 
   return (
     <div className="data-two-col">
+      {/* 单一共享表头：横跨两列，内部按同样的列宽分成两个半区 */}
+      <div className="data-two-col-head">
+        {[0, 1].map((side) => (
+          <div key={side} className="data-head" style={{ gridTemplateColumns: template }}>
+            {fields.map((f, ci) => (
+              <div key={ci} className={`data-head-cell${alignClass(f.align)}`}>{f.title}</div>
+            ))}
+          </div>
+        ))}
+      </div>
       {renderColumn(left, start)}
       {renderColumn(right, start + ROWS_PER_COLUMN)}
       {items.length > perPage && (
@@ -119,7 +137,8 @@ export function PriceSection({
     return () => window.clearInterval(timer);
   }, []);
 
-  const listingCols = useMemo(() => buildListingColumns(nowTs), [nowTs]);
+  const listingCols = useMemo(() => listingFields(nowTs), [nowTs]);
+  const historyCols = useMemo(() => historyFields(), []);
 
   const canBeHq = selectedItem.canBeHq === true;
   // 当前展示：出售列表 / 交易历史（交易历史由标题栏按钮切换并懒加载）
@@ -162,9 +181,9 @@ export function PriceSection({
     return (
       <>
         <div className="data-table-desktop">
-          <TwoColumnTable
+          <TwoColumnGrid
             items={priceData.listings}
-            columns={listingCols}
+            fields={listingCols}
             rowKey={(l) => l.listingID ?? `${l.worldName}-${l.pricePerUnit}-${l.quantity}-${l.hq}`}
             rowClassName={(_, index) => (index < 3 ? "top-three-row" : "")}
           />
@@ -205,9 +224,9 @@ export function PriceSection({
     return (
       <>
         <div className="data-table-desktop">
-          <TwoColumnTable
+          <TwoColumnGrid
             items={priceData.recentHistory}
-            columns={historyColumns}
+            fields={historyCols}
             rowKey={(h) => `${h.timestamp}-${h.worldName}-${h.pricePerUnit}-${h.quantity}-${h.hq}`}
           />
         </div>

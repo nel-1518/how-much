@@ -519,31 +519,115 @@
   white-space: nowrap;
 }
 
-/* ===== 桌面端两列并排表格（出售列表 / 交易历史） ===== */
+/* ===== 桌面端两列网格（出售列表 / 交易历史）：单一共享表头 + 两列数据 ===== */
 .data-two-col {
+  --two-col-gap: 22px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 0 var(--two-col-gap);
   align-items: start;
 }
 
+/* 共享表头：横跨两列，内部再分成两个与数据列等宽的半区，保证与数据严格对齐 */
+.data-two-col-head {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 var(--two-col-gap);
+  margin-bottom: 2px;
+}
+
+.data-head {
+  display: grid;
+  align-items: center;
+}
+
+.data-head-cell {
+  padding: 8px 8px 7px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: 2px solid var(--border);
+}
+
 .data-col {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
-.data-two-col .ant-table {
-  font-size: 13px;
+.data-row {
+  display: grid;
+  align-items: center;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border-light);
+  transition: background 0.15s ease;
 }
 
-.data-two-col .ant-table-thead > tr > th,
-.data-two-col .ant-table-tbody > tr > td {
-  padding: 7px 8px !important;
+.data-cell {
+  padding: 0 8px;
+  min-width: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-cell .world-name {
+  white-space: nowrap;
+}
+
+.data-head-cell.align-center,
+.data-cell.align-center {
+  text-align: center;
+}
+
+.data-head-cell.align-right,
+.data-cell.align-right {
+  text-align: right;
+}
+
+/* 交替行底色：左右两列同层同色，形成横向连续的条带，便于左右对照 */
+.data-col .data-row:nth-child(even) {
+  background: var(--bg-elevated);
+}
+
+.data-col .data-row:hover {
+  background: var(--accent-bg);
+}
+
+/* 最低单价前三高亮 */
+.data-col .data-row.top-three-row {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.07), rgba(139, 92, 246, 0.02));
+}
+
+.data-col .data-row.top-three-row:hover {
+  background: linear-gradient(90deg, rgba(139, 92, 246, 0.13), rgba(139, 92, 246, 0.05));
+}
+
+.data-row.top-three-row .world-name {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.data-row.top-three-row .price-cell {
+  color: var(--stat-green);
+  font-weight: 800;
+}
+
+.data-row.top-three-row .price-cell .gil-suffix {
+  color: var(--stat-green);
+  opacity: 0.6;
 }
 
 .data-two-col-pagination {
   grid-column: 1 / -1;
   text-align: center;
-  margin-top: 4px;
+  margin-top: 10px;
 }
 
 /* ===== 空状态 / 加载 ===== */
