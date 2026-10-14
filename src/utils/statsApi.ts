@@ -65,21 +65,31 @@ export interface DailyStatsResponse {
   advice: Record<"nq" | "hq" | "all", AdviceStats>;
 }
 
-/** 支持的统计范围（天）：近30天 / 半年 / 一年 */
+/**
+ * 前端可选统计范围（天）：7 / 14 / 30 / 180 / 365。
+ * 7、14 天由 30 天数据裁剪得到（30 天已包含），服务端无需单独支持。
+ */
 export const STATS_RANGE_OPTIONS = [
-  { label: "近30天", value: 30 },
+  { label: "7天", value: 7 },
+  { label: "14天", value: 14 },
+  { label: "30天", value: 30 },
   { label: "半年", value: 180 },
   { label: "一年", value: 365 },
 ] as const;
 
 export type StatsRange = (typeof STATS_RANGE_OPTIONS)[number]["value"];
 
+/** 服务端实际支持的统计范围：7 / 14 天复用 30 天请求（返回后再裁剪） */
+export function serverRangeOf(range: number): number {
+  return range < 30 ? 30 : range;
+}
+
 /**
  * 获取每日平均价统计（/api/stats/daily，无鉴权）。
  * 服务端收到请求时会执行注册逻辑（首次注册并采集），返回后即可查询最新统计。
  * @param itemId 物品 ID
  * @param region 查询目标："中国"（全服，省略参数）| 大区名（region=）| 服务器名（world=）
- * @param range  时间范围：30 / 180 / 365
+ * @param range  服务端时间范围：30 / 180 / 365（7 / 14 天请传 30，返回后裁剪）
  */
 export async function fetchDailyStats(
   itemId: number,

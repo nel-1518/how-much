@@ -7,6 +7,7 @@ import {
   fetchDailyStats,
   pickSeries,
   pickAdvice,
+  serverRangeOf,
   STATS_RANGE_OPTIONS,
   type DailyStatsResponse,
   type StatsDay,
@@ -16,7 +17,7 @@ import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
 import { PurchaseAdvice } from "./PurchaseAdvice";
 import type { UniversalisListing } from "../types";
 
-/** 时间范围选项：近30天 / 半年 / 一年（服务端仅支持这三个） */
+/** 时间范围选项：7天 / 14天 / 30天 / 半年 / 一年（7、14 天由 30 天数据裁剪） */
 const RANGE_OPTIONS = STATS_RANGE_OPTIONS.map((o) => ({ label: o.label, value: o.value }));
 
 type QualityKey = "nq" | "hq" | "all";
@@ -182,10 +183,10 @@ const weekendSeparatorPlugin: Plugin = {
 /**
  * 价格走势 + 购买建议合并模块：最高/最低价区间带 + 平均价主线 + 趋势线，
  * 数据来自 /api/stats/daily（服务端收到请求时自动注册并采集）。
- * - 时间范围：近30天 / 半年 / 一年（服务端仅支持）
+ * - 时间范围：7天 / 14天 / 30天 / 半年 / 一年（默认30天；7、14 天由 30 天数据裁剪）
  * - 品质：hq=0 固定 nq；hq=1 默认 hq，可切换 nq/hq/all（切换不重新请求）
- * - 缓存：按 item+region+range 分别缓存完整响应（含对应 range 的 advice）；
- *   切换 range 时命中缓存直接使用，不重复请求（每个 range 首次请求一次）
+ * - 缓存：按 item+region+服务端 range 分别缓存完整响应（含对应 range 的 advice）；
+ *   切换 range 时命中缓存直接使用，不重复请求（每个服务端 range 首次请求一次）
  * - 购买建议：历史统计来自服务端 advice（当前品质/range），当前挂单来自前端查价 listings，动态更新
  */
 export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }: StatsChartProps) {
@@ -206,11 +207,13 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
     setQuality(canBeHq ? "hq" : "nq");
   }
 
-  // 数据获取：按 item+region+range 分别缓存完整响应（含对应 range 的 advice）。
-  // 切换 range 时命中缓存直接使用（每个 range 首次请求一次），不再请求。
+  // 数据获取：按 item+region+服务端range 分别缓存完整响应（含对应 range 的 advice）。
+  // 切换 range 时命中缓存直接使用（每个服务端 range 首次请求一次），不再请求。
   // 注册由服务端 /api/stats/daily 收到请求时自动执行（首次注册并采集）。
   useEffect(() => {
-    const cacheKey = `${itemId}-${region}-${rangeDays}`;
+    // 7 / 14 天复用 30 天数据（30 天已包含），实际只请求 30 / 180 / 365
+    const serverRange = serverRangeOf(rangeDays);
+    const cacheKey = `${itemId}-${region}-${serverRange}`;
     const cached = cacheRef.current.get(cacheKey);
     if (cached) {
       setResp(cached);
@@ -221,7 +224,7 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchDailyStats(itemId, region, rangeDays)
+    fetchDailyStats(itemId, region, serverRange)
       .then((data) => {
         if (cancelled || !data) return;
         cacheRef.current.set(cacheKey, data);
@@ -241,7 +244,15 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
   }, [itemId, region, rangeDays]);
 
   // 当前展示的数据：品质切换在响应内完成，无需重新请求；按天补全缺失日期使时间轴平均分布
-  const filled = useMemo(() => fillDailySeries(pickSeries(resp, quality)), [resp, quality]);
+  const filledFull = useMemo(() => fillDailySeries(pickSeries(resp, quality)), [resp, quality]);
+  // 7 / 14 天直接裁剪 30 天数据（默认 30 天已包含 7、14 天），无需额外请求
+  const filled = useMemo(() => {
+    if (rangeDays >= 30 || filledFull.labels.length <= rangeDays) return filledFull;
+    return {
+      labels: filledFull.labels.slice(-rangeDays),
+      days: filledFull.days.slice(-rangeDays),
+    };
+  }, [filledFull, rangeDays]);
   const days = filled.days;
   const hasData = resp !== null && filled.labels.length > 0 && days.some((d) => d !== null);
 
