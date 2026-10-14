@@ -4,14 +4,16 @@ import { WORLD_TO_DC, DC_ICON_MAP } from "./constants";
 import { formatPrice, getCurrentPriceFormat } from "./utils/formatPrice";
 import type { UniversalisListing, UniversalisHistory } from "./types";
 
-/** 渲染服务器名称 + 大区图标（名称整体成块，出售列表里用服务器色相给它染色作底） */
+/** 渲染服务器名称 + 大区图标（名称用 antd Tag；染色行里以服务器色相显示为 outlined 标签） */
 export const renderWorldName = (worldName: string) => {
   const dc = WORLD_TO_DC[worldName];
   const icon = dc ? DC_ICON_MAP[dc] : null;
   return (
     <span className="world-name">
       {icon && <img src={icon} alt={dc} className="dc-icon" title={dc} />}
-      <span className="world-label">{worldName}</span>
+      <Tag variant="outlined" className="world-tag">
+        {worldName}
+      </Tag>
     </span>
   );
 };
@@ -118,7 +120,7 @@ export const historyFields = (): GridField<UniversalisHistory>[] => [
  * - 亮度 / 彩度不在这里定，交给 CSS 按明暗主题设定，从而保持清淡柔和。
  */
 const GOLDEN_ANGLE = 137.508;
-const START_HUE = 290; // 起始色相：与主题主色（紫）同向
+const START_HUE = 310; // 起始色相：与主题主色（紫）同向
 
 export function buildServerHueMap(worldNames: string[]): Map<string, number> {
   const map = new Map<string, number>();

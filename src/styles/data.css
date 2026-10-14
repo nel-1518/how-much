@@ -364,6 +364,18 @@
   border-radius: 2px;
 }
 
+/* 服务器名标签：未染色场景（如批量查价）还原为普通文字，避免出现灰色 Tag */
+.world-name .ant-tag.world-tag {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
 .time-cell {
   font-family: var(--mono);
   font-size: 12px;
@@ -547,16 +559,12 @@
   transition: background 0.15s ease;
 }
 
-/* 服务器名整体染色：色相按「当前页显示的服务器」动态生成，同页同服务器同色。
-   与主题高对比文字色 color-mix 混合：亮色主题自动偏深、暗色主题自动偏亮，无需分主题各写一份。
-   仅在 .server-colored（出售列表）下生效；未设 --server-hue 时声明无效 → 交易历史保持原样。 */
-
-.server-colored .world-label {
-  display: inline-block;
+.server-colored .world-name .world-tag.ant-tag {
   box-sizing: border-box;
-  /* 国服服务器名为 2–4 字：min-width 需盖住 4 字（4em 文字 + 0.6em 内边距），让底色宽度完全一致 */
+  /* 国服服务器名为 2–4 字：min-width 需盖住 4 字，让标签宽度完全一致 */
   min-width: 4.7em;
-  padding: 1px 0.3em;
+  margin: 0;
+  padding: 0 0.3em;
   border-radius: 6px;
   text-align: center;
   font-size: 13px;
@@ -564,8 +572,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--bg-card);
-  background: color-mix(in oklch, oklch(0.8 0.12 var(--server-hue)) 75%, var(--text-h));
+  background: transparent;
+  color: color-mix(in oklch, oklch(0.7 0.15 var(--server-hue)) 85%, var(--text-h));
+  border: 1px solid color-mix(in oklch, oklch(0.7 0.15 var(--server-hue)) 85%, var(--text-h));
 }
 
 .data-cell {
