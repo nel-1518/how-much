@@ -95,6 +95,7 @@ export async function fetchDailyStats(
   itemId: number,
   region: string,
   range: number,
+  signal?: AbortSignal,
 ): Promise<DailyStatsResponse> {
   const url = new URL(`${HISTORY_API_BASE}/api/stats/daily`);
   url.searchParams.set("item", String(itemId));
@@ -106,7 +107,7 @@ export async function fetchDailyStats(
 
   let res: Response;
   try {
-    res = await fetch(url, { headers: { accept: "application/json" } });
+    res = await fetch(url, { headers: { accept: "application/json" }, signal });
   } catch {
     throw new Error("无法连接历史数据服务");
   }

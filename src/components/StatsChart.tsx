@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Chart } from "chart.js/auto";
 import type { Plugin } from "chart.js";
-import { Card, Divider, Empty, Segmented, Spin, message } from "antd";
+import { Card, Divider, Empty, Segmented, Spin } from "antd";
 import { LineChartOutlined, ThunderboltOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import {
   fetchDailyStats,
@@ -12,6 +12,7 @@ import {
   type DailyStatsResponse,
   type StatsDay,
 } from "../utils/statsApi";
+import { useCachedFetch } from "../hooks/useCachedFetch";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
 import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
 import { PurchaseAdvice } from "./PurchaseAdvice";
@@ -169,12 +170,17 @@ const revealPlugin: Plugin = {
 export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }: StatsChartProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
-  const cacheRef = useRef<Map<string, DailyStatsResponse>>(new Map());
   const [rangeDays, setRangeDays] = useState(30);
   const [quality, setQuality] = useState<QualityKey>(canBeHq ? "hq" : "nq");
-  const [resp, setResp] = useState<DailyStatsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // 统计数据：按 item+region+服务端 range 缓存完整响应；缓存 / 竞态 / 取消由 useCachedFetch 处理
+  const {
+    data: resp,
+    loading,
+    error,
+    setData: setResp,
+    run: runStats,
+    cancel: cancelStats,
+  } = useCachedFetch<DailyStatsResponse>({ initialLoading: true });
 
   // 品质默认值跟随物品的 canBeHq（hq=0 → 固定 nq）：
   // 在渲染期间检测 props 变化并调整 state（React 官方模式，避免在 effect 中 setState）
@@ -187,38 +193,18 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
   // 数据获取：按 item+region+服务端range 分别缓存完整响应（含对应 range 的 advice）。
   // 切换 range 时命中缓存直接使用（每个服务端 range 首次请求一次），不再请求。
   // 注册由服务端 /api/stats/daily 收到请求时自动执行（首次注册并采集）。
+  // 失败时清空数据（与原先一致）；错误文案由 useCachedFetch 返回后内联展示。
   useEffect(() => {
     // 7 / 14 天复用 30 天数据（30 天已包含），实际只请求 30 / 180 / 365
     const serverRange = serverRangeOf(rangeDays);
     const cacheKey = `${itemId}-${region}-${serverRange}`;
-    const cached = cacheRef.current.get(cacheKey);
-    if (cached) {
-      setResp(cached);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    fetchDailyStats(itemId, region, serverRange)
-      .then((data) => {
-        if (cancelled || !data) return;
-        cacheRef.current.set(cacheKey, data);
-        setResp(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setResp(null);
-        setError(err instanceof Error ? err.message : "获取统计数据失败");
-        message.error(err instanceof Error ? err.message : "获取统计数据失败");
-        setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [itemId, region, rangeDays]);
+    void runStats(cacheKey, (signal) => fetchDailyStats(itemId, region, serverRange, signal)).then(
+      (result) => {
+        if (result.status === "error") setResp(null);
+      },
+    );
+    return cancelStats;
+  }, [itemId, region, rangeDays, runStats, setResp, cancelStats]);
 
   // 当前展示的数据：品质切换在响应内完成，无需重新请求；按天补全缺失日期使时间轴平均分布
   const filledFull = useMemo(() => fillDailySeries(pickSeries(resp, quality)), [resp, quality]);
