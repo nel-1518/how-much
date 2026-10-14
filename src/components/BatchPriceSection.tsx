@@ -19,8 +19,8 @@ import type {
 } from "../types";
 import { RegionSelector } from "./RegionSelector";
 import { renderWorldName, formatRelativeTime } from "../columns";
-import { useBatchPriceQuery } from "../hooks/useBatchPriceQuery";
-import { useSavedItemSets } from "../hooks/useSavedItemSets";
+import type { BatchPriceQuery } from "../hooks/useBatchPriceQuery";
+import type { SavedBatchSet } from "../storage";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
 import { DC_NAMES, isWorldName, WORLD_ID_TO_NAME } from "../constants";
 import { useRegionScopeContext } from "../contexts/RegionScopeContext";
@@ -34,6 +34,21 @@ interface BatchItemDb {
 
 interface BatchPriceSectionProps {
   itemDb: BatchItemDb;
+  /** 批量查价状态（由页面持有，与侧栏共享） */
+  batch: BatchPriceQuery;
+  /** 已保存物品集（由页面持有） */
+  sets: SavedBatchSet[];
+  /** 当前已载入的物品集 id */
+  loadedSetId?: string;
+  /** 物品集名称输入值 */
+  setName: string;
+  onSetNameChange: (value: string) => void;
+  /** 保存当前物品集 */
+  onSaveSet: () => void;
+  /** 载入物品集（传 undefined 表示清除选择） */
+  onLoadSet: (id?: string) => void;
+  /** 删除指定物品集 */
+  onRemoveSet: (id: string) => void;
   onOpenSingleItem: (item: BatchItem) => void;
 }
 
@@ -109,10 +124,21 @@ function computePrices(
 }
 
 /** 批量查价主视图：区服选择栏（顶部）+ 左批量输入 / 右已选（行内价格） */
-export function BatchPriceSection({ itemDb, onOpenSingleItem }: BatchPriceSectionProps) {
+export function BatchPriceSection({
+  itemDb,
+  batch,
+  sets,
+  loadedSetId,
+  setName,
+  onSetNameChange,
+  onSaveSet,
+  onLoadSet,
+  onRemoveSet,
+  onOpenSingleItem,
+}: BatchPriceSectionProps) {
   const { scope } = useRegionScopeContext();
-  const batch = useBatchPriceQuery();
-  const { sets, saveSet, removeSet } = useSavedItemSets();
+  // clearResults 为稳定引用（useCallback），抽出以供范围切换副作用安全依赖
+  const { clearResults } = batch;
 
   // 批量查价失败由具体 UI 决定提示方式（hook 只返回 error 状态）
   useEffect(() => {
@@ -120,8 +146,6 @@ export function BatchPriceSection({ itemDb, onOpenSingleItem }: BatchPriceSectio
   }, [batch.error]);
   const [hqOnly, setHqOnly] = useState(false);
   const [bulkInput, setBulkInput] = useState("");
-  const [setName, setSetName] = useState("");
-  const [loadedSetId, setLoadedSetId] = useState<string | undefined>(undefined);
 
   const dbReady = itemDb.status === "ready";
   const level = scopeLevel(scope);
@@ -137,11 +161,11 @@ export function BatchPriceSection({ itemDb, onOpenSingleItem }: BatchPriceSectio
   useEffect(() => {
     if (prevScopeRef.current === scope) return;
     prevScopeRef.current = scope;
-    batch.clearResults();
+    clearResults();
     if (itemsRef.current.length > 0) {
       queryRef.current(scope);
     }
-  }, [scope, batch.clearResults]);
+  }, [scope, clearResults]);
 
   // ---- 批量输入解析与匹配 ----
   // 每行一个物品名：后台对物品名做精确匹配，命中打勾、未命中打叉；命中项自动加入右侧已选
@@ -201,26 +225,6 @@ export function BatchPriceSection({ itemDb, onOpenSingleItem }: BatchPriceSectio
   }, [batch.results]);
 
   const failedItems = batch.results?.failedItems ?? [];
-
-  // ---- 物品集保存 / 载入 / 删除 ----
-  const handleSave = () => { saveSet(setName, batch.items); };
-  const handleLoad = (id?: string) => {
-    setLoadedSetId(id);
-    if (!id) return;
-    const set = sets.find((s) => s.id === id);
-    if (!set) return;
-    batch.clear();
-    setSetName(set.name);
-    for (const it of set.items) batch.addByEntry(it);
-    message.success("已载入物品集「" + set.name + "」");
-  };
-  const handleDeleteSet = () => {
-    if (!loadedSetId) return;
-    const set = sets.find((s) => s.id === loadedSetId);
-    removeSet(loadedSetId);
-    setLoadedSetId(undefined);
-    if (set) message.success("已删除物品集「" + set.name + "」");
-  };
 
   /** 复制物品名到剪贴板（点击物品名时触发） */
   const handleCopyName = async (name: string) => {
@@ -393,12 +397,12 @@ export function BatchPriceSection({ itemDb, onOpenSingleItem }: BatchPriceSectio
                 className="batch-set-name"
                 placeholder="物品集名称"
                 value={setName}
-                onChange={(e) => setSetName(e.target.value)}
-                onPressEnter={handleSave}
+                onChange={(e) => onSetNameChange(e.target.value)}
+                onPressEnter={onSaveSet}
                 maxLength={20}
                 allowClear
               />
-              <Button size="small" icon={<SaveOutlined />} onClick={handleSave}>
+              <Button size="small" icon={<SaveOutlined />} onClick={onSaveSet}>
                 保存
               </Button>
             </div>
@@ -411,9 +415,9 @@ export function BatchPriceSection({ itemDb, onOpenSingleItem }: BatchPriceSectio
                 optionFilterProp="label"
                 value={loadedSetId}
                 options={sets.map((s) => ({ value: s.id, label: s.name + "（" + s.items.length + " 件）" }))}
-                onChange={handleLoad}
+                onChange={onLoadSet}
               />
-              <Popconfirm title="确定删除该物品集？" okText="删除" cancelText="取消" onConfirm={handleDeleteSet} disabled={!loadedSetId}>
+              <Popconfirm title="确定删除该物品集？" okText="删除" cancelText="取消" onConfirm={() => loadedSetId && onRemoveSet(loadedSetId)} disabled={!loadedSetId}>
                 <Button
                   type="text"
                   size="small"

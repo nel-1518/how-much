@@ -1,8 +1,10 @@
 import { ConfigProvider, theme } from "antd";
+import { HashRouter } from "react-router";
 import App from "./App.tsx";
 import zhCN from "antd/locale/zh_CN";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext.tsx";
 import { RegionScopeProvider } from "./contexts/RegionScopeContext.tsx";
+import { ItemDbProvider } from "./contexts/ItemDbContext.tsx";
 import { SidebarProvider } from "./contexts/SidebarContext.tsx";
 import { DialogsProvider } from "./contexts/DialogsContext.tsx";
 
@@ -25,11 +27,15 @@ function ThemedApp() {
 const AppWrapper: React.FC = () => (
   <ThemeProvider>
     <RegionScopeProvider>
-      <SidebarProvider>
-        <DialogsProvider>
-          <ThemedApp />
-        </DialogsProvider>
-      </SidebarProvider>
+      <ItemDbProvider>
+        <SidebarProvider>
+          <DialogsProvider>
+            <HashRouter>
+              <ThemedApp />
+            </HashRouter>
+          </DialogsProvider>
+        </SidebarProvider>
+      </ItemDbProvider>
     </RegionScopeProvider>
   </ThemeProvider>
 );

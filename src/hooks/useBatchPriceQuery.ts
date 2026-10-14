@@ -54,3 +54,6 @@ export function useBatchPriceQuery() {
 
   return { items, results, loading, error, addByEntry, removeItem, clear, clearResults, query };
 }
+
+/** 批量查价 Hook 的返回值类型（供页面持有状态、向子组件透传） */
+export type BatchPriceQuery = ReturnType<typeof useBatchPriceQuery>;

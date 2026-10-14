@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Button, Dropdown, Segmented, type MenuProps } from "antd";
+import { useLocation, useNavigate } from "react-router";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -16,9 +17,8 @@ import type { ThemeMode } from "../constants";
 import type { ViewMode } from "../types";
 
 interface TopNavProps {
-  search: SearchSectionProps;
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
+  /** 顶部搜索栏配置；批量查价页不提供（不显示搜索框） */
+  search?: SearchSectionProps;
 }
 
 const THEME_ICONS: Record<ThemeMode, ReactNode> = {
@@ -39,10 +39,14 @@ const THEME_MENU_ITEMS: MenuProps["items"] = [
   { key: "dark", label: "深色", icon: <MoonOutlined /> },
 ];
 
-/** 顶部导航栏：搜索栏居中，左侧为侧栏开关，右侧为主题选择菜单 */
-export function TopNav({ search, viewMode, onViewModeChange }: TopNavProps) {
+/** 顶部导航栏：搜索栏居中，左侧为侧栏开关，右侧为视图切换与主题选择菜单 */
+export function TopNav({ search }: TopNavProps) {
   const { themeMode, isDark, setThemeMode } = useTheme();
   const { open: sidebarOpen, toggle: onToggleSidebar } = useSidebar();
+  const location = useLocation();
+  const navigate = useNavigate();
+  // 当前视图由路由决定：/batch 为批量查价，其余为单个查价
+  const viewMode: ViewMode = location.pathname.startsWith("/batch") ? "batch" : "single";
   const handleThemeMenuClick: MenuProps["onClick"] = ({ key }) => {
     setThemeMode(key as ThemeMode);
   };
@@ -62,18 +66,14 @@ export function TopNav({ search, viewMode, onViewModeChange }: TopNavProps) {
           />
         </div>
         <div className="top-nav-search">
-          {viewMode === "batch" ? (
-            <div></div>
-          ) : (
-            <SearchSection {...search} />
-          )}
+          {search ? <SearchSection {...search} /> : <div></div>}
         </div>
         <div className="top-nav-right">
           <Segmented
             size="small"
             className="view-mode-seg"
             value={viewMode}
-            onChange={(v) => onViewModeChange(v as ViewMode)}
+            onChange={(v) => navigate(v === "batch" ? "/batch" : "/")}
             options={[
               { label: <span><SearchOutlined /><span className="seg-label">单个查价</span></span>, value: "single" },
               { label: <span><UnorderedListOutlined /><span className="seg-label">批量查价</span></span>, value: "batch" },

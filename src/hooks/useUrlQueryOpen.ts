@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useSearchParams } from "react-router";
 import { message } from "antd";
 import type { ItemDbEntry } from "../types";
 import {
@@ -51,18 +52,8 @@ function resolveItem(raw: string, db: ItemDbLike): ItemDbEntry | null {
   return db.findExactName(v) ?? db.searchByName(v, 1)[0] ?? null;
 }
 
-/** 从地址栏移除 item/world 参数（保留其它参数与 hash），避免刷新时重复触发 */
-function clearUrlParams() {
-  const url = new URL(window.location.href);
-  url.searchParams.delete("item");
-  url.searchParams.delete("world");
-  const query = url.searchParams.toString();
-  const next = `${url.pathname}${query ? `?${query}` : ""}${url.hash}`;
-  window.history.replaceState(window.history.state, "", next);
-}
-
 /**
- * URL 参数直达：`?item=<id|名称>&world=<id|名称>`
+ * URL 参数直达：`#/?item=<id|名称>&world=<id|名称>`
  * - item、world 均可为 id 或文字；
  * - 仅给 item（无 world）时，沿用当前保存的默认查询范围；
  * - 仅给 world 而无 item 时无效（不打开任何物品）；
@@ -76,21 +67,24 @@ export function useUrlQueryOpen({
   setScope,
 }: UseUrlQueryOpenParams) {
   const appliedRef = useRef(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (appliedRef.current || !itemDb.ready) return;
 
-    const params = new URLSearchParams(window.location.search);
-    const itemParam = params.get("item");
+    const itemParam = searchParams.get("item");
     // 无 item（或为空）：即使带 world 也无效
     if (!itemParam || !itemParam.trim()) return;
     appliedRef.current = true;
 
-    const worldParam = params.get("world");
+    const worldParam = searchParams.get("world");
     const world = worldParam ? resolveWorld(worldParam) : null;
 
-    // 参数已消费：从地址栏清掉，避免刷新时重复触发
-    clearUrlParams();
+    // 参数已消费：从地址栏清掉（替换历史记录），避免刷新时重复触发
+    const next = new URLSearchParams(searchParams);
+    next.delete("item");
+    next.delete("world");
+    setSearchParams(next, { replace: true });
 
     const entry = resolveItem(itemParam, itemDb);
     if (!entry) {
@@ -106,5 +100,5 @@ export function useUrlQueryOpen({
     }
 
     openItem(entry, world ?? defaultScope);
-  }, [itemDb, defaultScope, openItem, selectServer, setScope]);
+  }, [itemDb, defaultScope, openItem, selectServer, setScope, searchParams, setSearchParams]);
 }

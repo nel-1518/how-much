@@ -267,3 +267,12 @@ a:hover {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
 }
+
+/* ===== antd message：顶部提示不拦截下层点击 ===== */
+/* antd v6 的 message 列表容器 `.ant-message-list-content` 是全宽（约 100%）
+   且 pointer-events: auto，会在视口顶部形成一条看不见的“遮罩带”，
+   挡住其正下方元素的点击。本项目的 message 只用于只读提示，故整体放行指针事件。 */
+.ant-message .ant-message-list-content,
+.ant-message .ant-message-list-content * {
+  pointer-events: none;
+}

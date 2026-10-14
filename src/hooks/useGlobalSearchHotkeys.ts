@@ -17,8 +17,6 @@ interface UseGlobalSearchHotkeysParams {
   topInputRef: RefObject<ComponentRef<typeof Input> | null>;
   /** 关闭搜索卡片 */
   closeSearchCard: () => void;
-  /** 切换历史侧栏开关 */
-  onToggleSidebar: () => void;
   /** 打开卡片时是否让卡片内输入框自动聚焦 */
   setFocusCardOnOpen: (value: boolean) => void;
   /** 顶部输入框内容变化（唤起卡片 / 粘贴回填） */
@@ -35,10 +33,11 @@ interface UseGlobalSearchHotkeysParams {
  * 全局搜索快捷键与粘贴接管。
  *
  * 集中处理：
- * - Esc 关闭卡片；`` ` `` 开关历史侧栏（仅非输入控件）
+ * - Esc 关闭卡片
  * - Tab 开关卡片；字母/数字或 IME 首个按键唤起卡片并聚焦顶部输入框
  * - Ctrl/Cmd+V 粘贴：精确匹配物品时直达查价，否则回填到顶部输入框
  *
+ * 侧栏开关（`）由侧栏组件自行监听，不在此处理。
  * 内部维护 `showResultsRef`（避免闭包过期）、`composingRef`（IME 组合中标记）
  * 与 `pendingKeyRef`（键盘唤起后首字符未落地的补入）。
  */
@@ -49,7 +48,6 @@ export function useGlobalSearchHotkeys({
   infoOpen,
   topInputRef,
   closeSearchCard,
-  onToggleSidebar,
   setFocusCardOnOpen,
   onKeywordChange,
   setActiveIndex,
@@ -92,15 +90,7 @@ export function useGlobalSearchHotkeys({
       if (settingsOpen || infoOpen) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-      // `：打开 / 关闭历史侧栏（输入框内不拦截，避免影响正常输入）
-      if (e.key === "`") {
-        if (isEditableTarget(e.target)) return;
-        e.preventDefault();
-        onToggleSidebar();
-        return;
-      }
-
-      // 批量查价模式：单品搜索的 Tab/字母/粘贴快捷键不生效（Esc、侧栏开关仍可用）
+      // 批量查价模式：单品搜索的 Tab/字母/粘贴快捷键不生效（Esc 仍可用）
       if (viewMode === "batch") return;
 
       // Tab：卡片打开时关闭；关闭时打开并聚焦卡片内输入框
@@ -183,7 +173,7 @@ export function useGlobalSearchHotkeys({
       document.removeEventListener("compositionstart", handleCompositionStart);
       document.removeEventListener("compositionend", handleCompositionEnd);
     };
-  }, [settingsOpen, infoOpen, viewMode, closeSearchCard, onToggleSidebar, onKeywordChange, setActiveIndex, setShowResults, setFocusCardOnOpen, findExactName, selectByDbEntry, topInputRef]);
+  }, [settingsOpen, infoOpen, viewMode, closeSearchCard, onKeywordChange, setActiveIndex, setShowResults, setFocusCardOnOpen, findExactName, selectByDbEntry, topInputRef]);
 
   // 键盘打开卡片后，若首个字符没有进入输入框（浏览器未把默认行为重定向到输入框），手动补入
   useEffect(() => {

@@ -47,5 +47,11 @@ export function useSavedItemSets() {
     });
   }, []);
 
-  return { sets, saveSet, removeSet };
+  /** 清空全部已保存物品集 */
+  const clearSets = useCallback(() => {
+    setSets([]);
+    storage.batchSets.save([]);
+  }, []);
+
+  return { sets, saveSet, removeSet, clearSets };
 }
