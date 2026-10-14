@@ -5,7 +5,8 @@ import type { ItemResult, UniversalisResponse } from "../types";
 import { listingFields, historyFields, buildServerHueMap, renderWorldName, formatTradeTime, formatRelativeTime, type GridField } from "../columns";
 import type { DcName } from "../constants";
 import type { DcServerMap } from "../hooks/useRegionScope";
-import { formatPrice, getCurrentPriceFormat, withMarketTax, loadTaxEnabled, saveTaxEnabled } from "../utils/formatPrice";
+import { formatPrice, getCurrentPriceFormat, withMarketTax } from "../utils/formatPrice";
+import { storage } from "../storage";
 import { RegionSelector } from "./RegionSelector";
 
 // 价格走势/购买建议（含 chart.js）按需加载：仅搜索后渲染时才下载对应 chunk
@@ -150,7 +151,7 @@ export function PriceSection({
   // 只看 HQ 开关（物品存在 HQ 品质时才可用）
   const [hqOnly, setHqOnly] = useState(false);
   // 税率开关：开启后单价/总计展示税后价（×105% 向下取整）；状态持久化，对所有物品查询生效
-  const [taxed, setTaxed] = useState(loadTaxEnabled);
+  const [taxed, setTaxed] = useState(() => storage.marketTax.load());
   // 相对时间（xx分前）定时刷新：每 30 秒更新一次基准时间
   const [nowTs, setNowTs] = useState(() => Date.now());
 
@@ -308,7 +309,7 @@ export function PriceSection({
                 size="small"
                 className="data-card-tax"
                 icon={<PercentageOutlined />}
-                onClick={() => setTaxed((v) => { const next = !v; saveTaxEnabled(next); return next; })}
+                onClick={() => setTaxed((v) => { const next = !v; storage.marketTax.save(next); return next; })}
               >
                 税率
               </Button>

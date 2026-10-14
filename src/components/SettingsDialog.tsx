@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Modal, Space, Typography, Segmented } from "antd";
 import { SettingOutlined, NumberOutlined } from "@ant-design/icons";
 import type { PriceFormat } from "../constants";
-import { loadPriceFormat, savePriceFormat } from "../utils/formatPrice";
+import { storage } from "../storage";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -17,7 +17,7 @@ const PRICE_FORMAT_OPTIONS: { label: string; value: PriceFormat; example: string
 /** 设置弹窗：金额显示格式 */
 export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   // 金额格式：弹窗内部自管（打开时读本地存储，选择即保存；页面重载后生效）
-  const [priceFormat, setPriceFormat] = useState<PriceFormat>(loadPriceFormat);
+  const [priceFormat, setPriceFormat] = useState<PriceFormat>(() => storage.priceFormat.load());
 
   return (
     <Modal
@@ -46,7 +46,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         value={priceFormat}
         onChange={(v) => {
           setPriceFormat(v);
-          savePriceFormat(v);
+          storage.priceFormat.save(v);
         }}
         options={PRICE_FORMAT_OPTIONS.map((o) => ({
           label: (

@@ -1,12 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { message } from "antd";
 import type { ItemDbEntry, ItemDbVersion } from "../types";
-import {
-  ITEM_DB_VERSION_KEY,
-  ITEM_DB_DATA_KEY,
-  ITEM_DB_VERSION_URL,
-  ITEM_DB_DATA_URL,
-} from "../constants";
+import { ITEM_DB_VERSION_URL, ITEM_DB_DATA_URL } from "../constants";
+import { storage } from "../storage";
 
 interface ItemDatabaseState {
   status: "loading" | "ready" | "error";
@@ -89,7 +85,7 @@ export function useItemDatabase() {
           // 版本文件获取失败，忽略，继续尝试用本地数据
         }
 
-        const localVersion = localStorage.getItem(ITEM_DB_VERSION_KEY);
+        const localVersion = storage.itemDb.loadVersion();
         let data: ItemDbEntry[] | null = null;
         let versionUsed: string | null = null;
         let isNewDownload = false;
@@ -99,12 +95,12 @@ export function useItemDatabase() {
           try {
             const dataRes = await fetch(ITEM_DB_DATA_URL);
             if (dataRes.ok) {
-              data = await dataRes.json();
+              data = (await dataRes.json()) as ItemDbEntry[];
               versionUsed = remoteVersion;
               isNewDownload = true;
               // 存入本地缓存
-              localStorage.setItem(ITEM_DB_DATA_KEY, JSON.stringify(data));
-              localStorage.setItem(ITEM_DB_VERSION_KEY, remoteVersion);
+              storage.itemDb.saveData(data);
+              storage.itemDb.saveVersion(remoteVersion);
             }
           } catch {
             // 下载失败，尝试用本地缓存
@@ -112,17 +108,11 @@ export function useItemDatabase() {
         }
 
         if (!data && localVersion) {
-          // 尝试从本地缓存加载
-          const cached = localStorage.getItem(ITEM_DB_DATA_KEY);
-          if (cached) {
-            try {
-              data = JSON.parse(cached) as ItemDbEntry[];
-              versionUsed = localVersion;
-            } catch {
-              // 缓存损坏，清空
-              localStorage.removeItem(ITEM_DB_DATA_KEY);
-              localStorage.removeItem(ITEM_DB_VERSION_KEY);
-            }
+          // 尝试从本地缓存加载（缓存损坏时 storage 会自行清理并返回 null）
+          const cached = storage.itemDb.loadData();
+          if (cached && cached.length > 0) {
+            data = cached;
+            versionUsed = localVersion;
           }
         }
 

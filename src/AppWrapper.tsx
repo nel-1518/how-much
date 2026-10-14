@@ -2,17 +2,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { ConfigProvider, theme } from "antd";
 import App from "./App.tsx";
 import zhCN from "antd/locale/zh_CN";
-import { THEME_KEY } from "./constants.ts";
+import { storage } from "./storage.ts";
 import type { ThemeMode } from "./constants.ts";
-
-/** 读取 localStorage 中的主题模式 */
-function loadThemeMode(): ThemeMode {
-  try {
-    const v = localStorage.getItem(THEME_KEY);
-    if (v === "light" || v === "dark" || v === "auto") return v;
-  } catch { /* ignore */ }
-  return "auto";
-}
 
 /** 根据主题模式和系统偏好判断当前是否为深色 */
 function computeIsDark(themeMode: ThemeMode, systemDark: boolean): boolean {
@@ -25,7 +16,7 @@ const AppWrapper: React.FC = () => {
   const [systemDark, setSystemDark] = useState(
     () => window.matchMedia("(prefers-color-scheme: dark)").matches,
   );
-  const [themeMode, setThemeMode] = useState<ThemeMode>(loadThemeMode);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => storage.theme.load());
 
   const isDark = computeIsDark(themeMode, systemDark);
 
@@ -49,7 +40,7 @@ const AppWrapper: React.FC = () => {
 
   const handleThemeModeChange = useCallback((mode: ThemeMode) => {
     setThemeMode(mode);
-    try { localStorage.setItem(THEME_KEY, mode); } catch { /* ignore */ }
+    storage.theme.save(mode);
   }, []);
 
   // 直接根据 isDark 计算 Ant Design token，避免 useMemo 在渲染阶段

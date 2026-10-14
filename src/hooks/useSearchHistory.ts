@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import type { SearchHistoryItem } from "../types";
 import { MAX_HISTORY } from "../constants";
-import { loadHistory, loadPinnedHistory, saveHistory, savePinnedHistory } from "../history";
+import { storage } from "../storage";
 
 interface HistoryState {
   normal: SearchHistoryItem[];
@@ -14,8 +14,8 @@ interface HistoryState {
  */
 export function useSearchHistory() {
   const [history, setHistory] = useState<HistoryState>(() => ({
-    normal: loadHistory(),
-    pinned: loadPinnedHistory(),
+    normal: storage.searchHistory.load(),
+    pinned: storage.pinnedSearchHistory.load(),
   }));
 
   /** 将物品添加到普通历史最前方，超出上限则截断 */
@@ -29,7 +29,7 @@ export function useSearchHistory() {
       const next = [{ id, name, time: Date.now() }, ...filtered];
       const maxNormal = Math.max(0, MAX_HISTORY - prev.pinned.length);
       const trimmed = next.slice(0, maxNormal);
-      saveHistory(trimmed);
+      storage.searchHistory.save(trimmed);
       return { ...prev, normal: trimmed };
     });
   }, []);
@@ -39,8 +39,8 @@ export function useSearchHistory() {
     setHistory((prev) => {
       const nextNormal = prev.normal.filter((h) => h.id !== id);
       const nextPinned = prev.pinned.filter((h) => h.id !== id);
-      saveHistory(nextNormal);
-      savePinnedHistory(nextPinned);
+      storage.searchHistory.save(nextNormal);
+      storage.pinnedSearchHistory.save(nextPinned);
       return { normal: nextNormal, pinned: nextPinned };
     });
   }, []);
@@ -48,8 +48,8 @@ export function useSearchHistory() {
   /** 清空全部历史（含固定） */
   const clearHistory = useCallback(() => {
     setHistory({ normal: [], pinned: [] });
-    saveHistory([]);
-    savePinnedHistory([]);
+    storage.searchHistory.save([]);
+    storage.pinnedSearchHistory.save([]);
   }, []);
 
   /** 固定/取消固定：在两组之间移动 */
@@ -62,8 +62,8 @@ export function useSearchHistory() {
         const newNormal = [{ id: inPinned.id, name: inPinned.name, time: Date.now() }, ...prev.normal];
         const maxNormal = Math.max(0, MAX_HISTORY - newPinned.length);
         const trimmed = newNormal.slice(0, maxNormal);
-        savePinnedHistory(newPinned);
-        saveHistory(trimmed);
+        storage.pinnedSearchHistory.save(newPinned);
+        storage.searchHistory.save(trimmed);
         return { pinned: newPinned, normal: trimmed };
       } else {
         // 固定 → 从普通移入固定最前方
@@ -71,8 +71,8 @@ export function useSearchHistory() {
         if (!item) return prev;
         const newNormal = prev.normal.filter((h) => h.id !== id);
         const newPinned = [{ id: item.id, name: item.name, time: item.time }, ...prev.pinned];
-        saveHistory(newNormal);
-        savePinnedHistory(newPinned);
+        storage.searchHistory.save(newNormal);
+        storage.pinnedSearchHistory.save(newPinned);
         return { normal: newNormal, pinned: newPinned };
       }
     });

@@ -90,8 +90,6 @@ export const DC_ICON_MAP: Record<string, string> = {
 };
 
 // 搜索历史
-export const HISTORY_KEY = "ff14_search_history";
-export const HISTORY_PINNED_KEY = "ff14_search_history_pinned";
 export const MAX_HISTORY = 30;
 
 // 配套服务地址
@@ -101,34 +99,21 @@ export const HISTORY_API_BASE: string = "https://ffxiv-api.neeeel.com"
 // Universalis 行情地址（前端直连，服务端不再提供代理）
 export const UNIVERSALIS_BASE: string = "https://universalis.app"
 
-// 上次选中大区
-export const REGION_KEY = "ff14_last_region";
+// 默认查询目标（上次选中大区由 storage 持久化）
 export const DEFAULT_REGION = "中国";
 
-// 各大区记忆的已选服务器（JSON：{ "陆行鸟": "红玉海", ... }，缺省=大区名）
-export const DC_SERVERS_KEY = "ff14_dc_servers";
-
 // 历史侧栏
-export const SIDEBAR_OPEN_KEY = "ff14_sidebar_open";
-export const SIDEBAR_WIDTH_KEY = "ff14_sidebar_width";
 export const MIN_SIDEBAR_W = 220;
 export const MAX_SIDEBAR_W = 480;
 export const DEFAULT_SIDEBAR_W = 280;
 
 // 主题设置
-export const THEME_KEY = "ff14_theme_mode";
 export type ThemeMode = "auto" | "light" | "dark";
 
 // 金额显示格式（全局）：comma=1,234,567 / space4=123 4567
-export const PRICE_FORMAT_KEY = "ff14_price_format";
 export type PriceFormat = "comma" | "space4";
 
-// 出售列表「税率」开关：true=展示税后价（×105% 向下取整）
-export const TAX_KEY = "ff14_market_tax";
-
 // 本地物品数据库
-export const ITEM_DB_VERSION_KEY = "ff14_item_db_version";
-export const ITEM_DB_DATA_KEY = "ff14_item_db_data";
 // public/ 静态资源路径统一通过 publicUrl 处理，自动适配 Vite base 配置
 export const ITEM_DB_BASE = publicUrl("data");
 export const ITEM_DB_VERSION_URL = `${ITEM_DB_BASE}/item-db.version.json`;

@@ -18,12 +18,7 @@ import { PriceSection } from "./components/PriceSection";
 import { BatchPriceSection } from "./components/BatchPriceSection";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { InfoDialog } from "./components/InfoDialog";
-import {
-  loadSidebarOpen,
-  saveSidebarOpen,
-  loadSidebarWidth,
-  saveSidebarWidth,
-} from "./history";
+import { storage } from "./storage";
 import "./App.css";
 
 interface AppProps {
@@ -42,9 +37,9 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
   const [sidebarOpen, setSidebarOpen] = useState(
     () => (typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches)
       ? false
-      : loadSidebarOpen(),
+      : storage.sidebar.load().open,
   );
-  const [sidebarWidth, setSidebarWidth] = useState(loadSidebarWidth);
+  const [sidebarWidth, setSidebarWidth] = useState(() => storage.sidebar.load().width);
   const [sidebarResizing, setSidebarResizing] = useState(false);
   // 是否由 Tab 打开卡片（决定卡片输入框是否自动聚焦）
   const [focusCardOnOpen, setFocusCardOnOpen] = useState(false);
@@ -97,7 +92,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
       const next = !prev;
       // 移动端不持久化（每次进入默认关闭）；桌面端记住开关状态
       if (!window.matchMedia("(max-width: 768px)").matches) {
-        saveSidebarOpen(next);
+        storage.sidebar.setOpen(next);
       }
       return next;
     });
@@ -108,7 +103,7 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
   }, []);
 
   const handleSidebarResizeEnd = useCallback((w: number) => {
-    saveSidebarWidth(w);
+    storage.sidebar.setWidth(w);
     setSidebarResizing(false);
   }, []);
 

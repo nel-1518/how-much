@@ -9,7 +9,7 @@
       // 首次绘制前应用主题，避免进入页面时深/浅色闪烁（FOUC）
       (function () {
         try {
-          var mode = localStorage.getItem("ff14_theme_mode");
+          var mode = localStorage.getItem("how-much:theme_mode");
           if (mode === "light") {
             document.documentElement.setAttribute("data-theme", "light");
           } else if (mode === "dark") {
