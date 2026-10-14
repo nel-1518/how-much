@@ -18,7 +18,7 @@ import type {
   AggregatedScopeValue,
 } from "../types";
 import { RegionSelector } from "./RegionSelector";
-import { renderWorldName } from "../columns";
+import { renderWorldName, formatRelativeTime } from "../columns";
 import { useBatchPriceQuery } from "../hooks/useBatchPriceQuery";
 import { useSavedItemSets } from "../hooks/useSavedItemSets";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
@@ -60,19 +60,6 @@ function pickLevel(
   if (!v) return null;
   if (v.price != null || v.quantity != null || v.timestamp != null) return v;
   return null;
-}
-
-/** 时间戳（秒或毫秒自动识别）-> 相对时间文案 */
-function formatRelativeTime(ts?: number): string {
-  if (!ts) return "—";
-  const ms = ts > 1e12 ? ts : ts * 1000;
-  const diff = Date.now() - ms;
-  const min = Math.floor(diff / 60000);
-  if (min < 1) return "刚刚";
-  if (min < 60) return min + " 分钟前";
-  const h = Math.floor(min / 60);
-  if (h < 24) return h + " 小时前";
-  return Math.floor(h / 24) + " 天前";
 }
 
 interface ItemPrices {
@@ -324,7 +311,7 @@ export function BatchPriceSection({
       responsive: ["md"],
       render: (_, item) => {
         const p = computePrices(resultMap.get(item.id), level, hqOnly);
-        return <span className="time-cell">{formatRelativeTime(p.lastUpload)}</span>;
+        return <span className="time-cell">{formatRelativeTime(p.lastUpload ?? 0)}</span>;
       },
     },
     {

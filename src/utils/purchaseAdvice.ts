@@ -1,8 +1,6 @@
 ﻿import type { UniversalisListing } from "../types";
 import type { AdviceStats } from "./statsApi";
-
-// 市场板购买手续费 5%
-const TAX_RATE = 0.05;
+import { MARKET_TAX_RATE as TAX_RATE } from "./formatPrice";
 
 // ======================== 类型定义 ========================
 

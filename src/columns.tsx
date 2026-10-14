@@ -68,12 +68,13 @@ export const formatTradeTime = (v: number) =>
   });
 
 /**
- * 相对时间（xx分前）：传入 Unix 秒时间戳与「当前时间」（毫秒），
- * 用于挂单的「更新时间」。不足 1 分钟显示「刚刚」。
+ * 相对时间（xx分前）：传入 Unix 时间戳（秒或毫秒自动识别）与「当前时间」（毫秒），
+ * 用于挂单的「更新时间」与批量查价的「更新时间」。不足 1 分钟显示「刚刚」。
  */
-export const formatRelativeTime = (tsSec: number, nowMs: number = Date.now()): string => {
-  if (!tsSec) return "-";
-  const diff = nowMs - tsSec * 1000;
+export const formatRelativeTime = (ts: number, nowMs: number = Date.now()): string => {
+  if (!ts) return "-";
+  const tsMs = ts > 1e12 ? ts : ts * 1000; // 兼容秒 / 毫秒时间戳
+  const diff = nowMs - tsMs;
   if (diff < 60_000) return "刚刚";
   const min = Math.floor(diff / 60_000);
   if (min < 60) return `${min}分前`;
