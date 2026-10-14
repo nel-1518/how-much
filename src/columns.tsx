@@ -83,8 +83,8 @@ export interface GridField<T> {
 
 /** 出售列表字段（桌面端两列网格用） */
 export const listingFields = (nowMs: number = Date.now()): GridField<UniversalisListing>[] => [
-  { title: "服务器", width: "1.1fr", render: (l) => renderWorldName(l.worldName) },
-  { title: "品质", width: "0.7fr", align: "center", render: (l) => renderQualityTag(l.hq) },
+  { title: "服务器", width: "minmax(100px, 1.1fr)", render: (l) => renderWorldName(l.worldName) },
+  { title: "品质", width: "minmax(54px, 0.7fr)", align: "center", render: (l) => renderQualityTag(l.hq) },
   { title: "单价", width: "1.5fr", render: (l) => renderPrice(l.pricePerUnit) },
   { title: "数量", width: "0.7fr", align: "center", render: (l) => l.quantity },
   { title: "总计", width: "1.5fr", render: (l) => renderTotal(l.total) },
@@ -99,14 +99,14 @@ export const listingFields = (nowMs: number = Date.now()): GridField<Universalis
 
 /** 交易历史字段（桌面端两列网格用） */
 export const historyFields = (): GridField<UniversalisHistory>[] => [
-  { title: "服务器", width: "1.1fr", render: (h) => renderWorldName(h.worldName) },
-  { title: "品质", width: "0.7fr", align: "center", render: (h) => renderQualityTag(h.hq) },
-  { title: "单价", width: "1.4fr", render: (h) => renderPrice(h.pricePerUnit) },
+  { title: "服务器", width: "minmax(100px, 1.1fr)", render: (h) => renderWorldName(h.worldName) },
+  { title: "品质", width: "minmax(54px, 0.7fr)", align: "center", render: (h) => renderQualityTag(h.hq) },
+  { title: "单价", width: "1.8fr", render: (h) => renderPrice(h.pricePerUnit) },
   { title: "数量", width: "0.7fr", align: "center", render: (h) => h.quantity },
-  { title: "买家", width: "1.1fr", render: (h) => <span className="buyer-cell">{h.buyerName}</span> },
+  { title: "买家", width: "1.2fr", render: (h) => <span className="buyer-cell">{h.buyerName}</span> },
   {
     title: "日期",
-    width: "1.3fr",
+    width: "minmax(100px, 1.1fr)",
     render: (h) => <span className="time-cell">{formatTradeTime(h.timestamp)}</span>,
   },
 ];

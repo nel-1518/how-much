@@ -561,8 +561,9 @@
 
 .server-colored .world-name .world-tag.ant-tag {
   box-sizing: border-box;
-  /* 国服服务器名为 2–4 字：min-width 需盖住 4 字，让标签宽度完全一致 */
-  min-width: 4.7em;
+  /* 国服服务器名为 2–4 字：固定宽度让所有标签宽度完全一致（更长者省略号） */
+  width: 5em;
+  flex-shrink: 0;
   margin: 0;
   padding: 0 0.3em;
   border-radius: 6px;
