@@ -1,12 +1,10 @@
 import { useState, useCallback, useRef } from "react";
-import { message } from "antd";
 import type {
   UniversalisListing,
   UniversalisHistory,
   UniversalisResponse,
-  UniversalisHistoryResponse,
 } from "../types";
-import { REGION_MAP, UNIVERSALIS_BASE } from "../constants";
+import { fetchListings, fetchHistory as fetchHistoryApi } from "../api/universalis";
 
 /**
  * 归一化 Universalis 响应：单服务器查询时 listings/recentHistory 的每条记录
@@ -65,6 +63,9 @@ function buildMerged(
  * - 出售列表：查询时立即请求（60 条），带内存缓存。
  * - 交易历史：不再随查价直接请求，改为调用方在需要时经 fetchPriceHistory 懒加载
  *   /api/v2/history/{area}/{id}?entriesToReturn=120&statsWithin=0&entriesWithin=2592000
+ *
+ * 两路请求各自带 `AbortController`：被新查询取代或清空时中止在途请求；
+ * 失败只设置 error 状态（由 PriceSection 内联展示），不在 hook 内弹 toast。
  */
 export function usePriceQuery() {
   const [priceData, setPriceData] = useState<UniversalisResponse | null>(null);
@@ -83,6 +84,9 @@ export function usePriceQuery() {
   const historyDataRef = useRef<UniversalisHistory[] | null>(null);
   // 当前查询目标（item+区域）：异步回包据此判断是否仍为当前查询，丢弃过期结果
   const activeScopeRef = useRef<string | null>(null);
+  // 两路在途请求的中止器（被新查询取代 / 清空时中止）
+  const listingsAbortRef = useRef<AbortController | null>(null);
+  const historyAbortRef = useRef<AbortController | null>(null);
 
   /** 交易历史：按需请求（查询范围 = 中国 / 大区 / 服务器） */
   const fetchHistory = useCallback((itemId: number, regionKey: string) => {
@@ -97,12 +101,10 @@ export function usePriceQuery() {
     }
     setHistoryLoading(true);
     setHistoryError(false);
-    const path = REGION_MAP[regionKey] ?? regionKey;
-    fetch(`${UNIVERSALIS_BASE}/api/v2/history/${path}/${itemId}?entriesToReturn=120&statsWithin=0&entriesWithin=2592000`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<UniversalisHistoryResponse>;
-      })
+    historyAbortRef.current?.abort();
+    const controller = new AbortController();
+    historyAbortRef.current = controller;
+    fetchHistoryApi(itemId, regionKey, controller.signal)
       .then((data) => {
         const entries = normalizeHistoryEntries(data.entries, data.worldName);
         historyCache.current.set(skey, entries);
@@ -112,12 +114,11 @@ export function usePriceQuery() {
         setHistoryError(false);
       })
       .catch(() => {
-        if (activeScopeRef.current === skey) {
-          setHistoryError(true);
-          message.error("交易历史获取失败");
-        }
+        if (historyAbortRef.current !== controller) return; // 已被更新的请求取代
+        if (activeScopeRef.current === skey) setHistoryError(true);
       })
       .finally(() => {
+        if (historyAbortRef.current !== controller) return;
         if (activeScopeRef.current === skey) setHistoryLoading(false);
       });
   }, []);
@@ -150,16 +151,11 @@ export function usePriceQuery() {
     setListingsError(false);
     setFilteredMannequinCount(0);
 
-    // 查询目标直接传中文名："中国"→china，大区/服务器名作为路径本身（Universalis 支持）
-    const path = REGION_MAP[regionKey] ?? regionKey;
-    const hqParam = hqOnly ? "&hq=true" : "";
-
+    listingsAbortRef.current?.abort();
+    const controller = new AbortController();
+    listingsAbortRef.current = controller;
     // 出售列表：60 条、不带交易历史（entries=0，加速访问）
-    fetch(`${UNIVERSALIS_BASE}/api/v2/${path}/${itemId}?listings=60&entries=0${hqParam}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<UniversalisResponse>;
-      })
+    fetchListings(itemId, regionKey, hqOnly, controller.signal)
       .then((listingsData) => {
         listingsCache.current.set(key, listingsData);
         if (activeScopeRef.current !== skey) return;
@@ -169,12 +165,11 @@ export function usePriceQuery() {
         setFilteredMannequinCount(countMannequin(listingsData.listings));
       })
       .catch(() => {
-        if (activeScopeRef.current === skey) {
-          setListingsError(true);
-          message.error("出售列表获取失败");
-        }
+        if (listingsAbortRef.current !== controller) return; // 已被更新的请求取代
+        if (activeScopeRef.current === skey) setListingsError(true);
       })
       .finally(() => {
+        if (listingsAbortRef.current !== controller) return;
         if (activeScopeRef.current === skey) setListingsLoading(false);
       });
   }, []);
@@ -194,6 +189,10 @@ export function usePriceQuery() {
     /** 交易历史懒加载：点击「交易历史」按钮时调用 */
     fetchPriceHistory: fetchHistory,
     clearPrice: useCallback(() => {
+      listingsAbortRef.current?.abort();
+      historyAbortRef.current?.abort();
+      listingsAbortRef.current = null;
+      historyAbortRef.current = null;
       listingsCache.current.clear();
       historyCache.current.clear();
       listingsDataRef.current = null;
