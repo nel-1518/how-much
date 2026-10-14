@@ -123,6 +123,9 @@ export type ThemeMode = "auto" | "light" | "dark";
 export const PRICE_FORMAT_KEY = "ff14_price_format";
 export type PriceFormat = "comma" | "space4";
 
+// 出售列表「税率」开关：true=展示税后价（×105% 向下取整）
+export const TAX_KEY = "ff14_market_tax";
+
 // 本地物品数据库
 export const ITEM_DB_VERSION_KEY = "ff14_item_db_version";
 export const ITEM_DB_DATA_KEY = "ff14_item_db_data";

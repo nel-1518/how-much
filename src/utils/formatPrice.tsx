@@ -1,4 +1,4 @@
-import { PRICE_FORMAT_KEY, type PriceFormat } from "../constants";
+import { PRICE_FORMAT_KEY, TAX_KEY, type PriceFormat } from "../constants";
 
 /** 读取本地存储的金额显示格式（非法值/旧值回退默认） */
 export function loadPriceFormat(): PriceFormat {
@@ -19,6 +19,30 @@ export function savePriceFormat(format: PriceFormat): void {
 /** 读取当前金额格式（直接读本地存储；保存后刷新页面生效，不做实时刷新） */
 export function getCurrentPriceFormat(): PriceFormat {
   return loadPriceFormat();
+}
+
+/** 市场板购买手续费 5% */
+export const MARKET_TAX_RATE = 0.05;
+
+/** 计算税后实付价：原价 × 105%，向下取整 */
+export function withMarketTax(value: number): number {
+  return Math.floor(value * (1 + MARKET_TAX_RATE));
+}
+
+/** 读取本地存储的「税率」开关状态（默认关闭） */
+export function loadTaxEnabled(): boolean {
+  try {
+    return localStorage.getItem(TAX_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+/** 保存「税率」开关状态到本地存储 */
+export function saveTaxEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(TAX_KEY, String(enabled));
+  } catch { /* ignore */ }
 }
 
 /**

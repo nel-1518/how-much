@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Tag } from "antd";
 import { WORLD_TO_DC, DC_ICON_MAP } from "./constants";
-import { formatPrice, getCurrentPriceFormat } from "./utils/formatPrice";
+import { formatPrice, getCurrentPriceFormat, withMarketTax } from "./utils/formatPrice";
 import type { UniversalisListing, UniversalisHistory } from "./types";
 
 /** 渲染服务器名称 + 大区图标（名称用 antd Tag；染色行里以服务器色相显示为 outlined 标签） */
@@ -81,21 +81,27 @@ export interface GridField<T> {
   render: (record: T) => ReactNode;
 }
 
-/** 出售列表字段（桌面端两列网格用） */
-export const listingFields = (nowMs: number = Date.now()): GridField<UniversalisListing>[] => [
-  { title: "服务器", width: "minmax(100px, 1.1fr)", render: (l) => renderWorldName(l.worldName) },
-  { title: "品质", width: "minmax(54px, 0.7fr)", align: "center", render: (l) => renderQualityTag(l.hq) },
-  { title: "单价", width: "1.5fr", render: (l) => renderPrice(l.pricePerUnit) },
-  { title: "数量", width: "0.7fr", align: "center", render: (l) => l.quantity },
-  { title: "总计", width: "1.5fr", render: (l) => renderTotal(l.total) },
-  {
-    title: "更新时间",
-    width: "1.1fr",
-    render: (l) => (
-      <span className="time-cell relative-time">{formatRelativeTime(l.lastReviewTime ?? 0, nowMs)}</span>
-    ),
-  },
-];
+/** 出售列表字段（桌面端两列网格用）；taxed=true 时单价/总计展示税后价（×105% 向下取整） */
+export const listingFields = (
+  nowMs: number = Date.now(),
+  taxed = false,
+): GridField<UniversalisListing>[] => {
+  const price = (v: number) => (taxed ? withMarketTax(v) : v);
+  return [
+    { title: "服务器", width: "minmax(100px, 1.1fr)", render: (l) => renderWorldName(l.worldName) },
+    { title: "品质", width: "minmax(54px, 0.7fr)", align: "center", render: (l) => renderQualityTag(l.hq) },
+    { title: "单价", width: "1.5fr", render: (l) => renderPrice(price(l.pricePerUnit)) },
+    { title: "数量", width: "0.7fr", align: "center", render: (l) => l.quantity },
+    { title: "总计", width: "1.5fr", render: (l) => renderTotal(price(l.total)) },
+    {
+      title: "更新时间",
+      width: "1.1fr",
+      render: (l) => (
+        <span className="time-cell relative-time">{formatRelativeTime(l.lastReviewTime ?? 0, nowMs)}</span>
+      ),
+    },
+  ];
+};
 
 /** 交易历史字段（桌面端两列网格用） */
 export const historyFields = (): GridField<UniversalisHistory>[] => [

@@ -1,11 +1,11 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination } from "antd";
-import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined } from "@ant-design/icons";
+import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination, Tooltip, Space } from "antd";
+import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined, PercentageOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
 import { listingFields, historyFields, buildServerHueMap, renderWorldName, formatTradeTime, formatRelativeTime, type GridField } from "../columns";
 import type { DcName } from "../constants";
 import type { DcServerMap } from "../hooks/useRegionScope";
-import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
+import { formatPrice, getCurrentPriceFormat, withMarketTax, loadTaxEnabled, saveTaxEnabled } from "../utils/formatPrice";
 import { RegionSelector } from "./RegionSelector";
 
 // 价格走势/购买建议（含 chart.js）按需加载：仅搜索后渲染时才下载对应 chunk
@@ -149,6 +149,8 @@ export function PriceSection({
 }: PriceSectionProps) {
   // 只看 HQ 开关（物品存在 HQ 品质时才可用）
   const [hqOnly, setHqOnly] = useState(false);
+  // 税率开关：开启后单价/总计展示税后价（×105% 向下取整）；状态持久化，对所有物品查询生效
+  const [taxed, setTaxed] = useState(loadTaxEnabled);
   // 相对时间（xx分前）定时刷新：每 30 秒更新一次基准时间
   const [nowTs, setNowTs] = useState(() => Date.now());
 
@@ -157,7 +159,7 @@ export function PriceSection({
     return () => window.clearInterval(timer);
   }, []);
 
-  const listingCols = useMemo(() => listingFields(nowTs), [nowTs]);
+  const listingCols = useMemo(() => listingFields(nowTs, taxed), [nowTs, taxed]);
   const historyCols = useMemo(() => historyFields(), []);
 
   const canBeHq = selectedItem.canBeHq === true;
@@ -228,9 +230,9 @@ export function PriceSection({
                 </div>
                 <div className="data-mobile-line">
                   <span className="price-cell">
-                    {formatPrice(item.pricePerUnit, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
+                    {formatPrice(taxed ? withMarketTax(item.pricePerUnit) : item.pricePerUnit, getCurrentPriceFormat())} <span className="gil-suffix">Gil</span>
                   </span>
-                  <span className="data-mobile-meta">×{item.quantity} · 总计 {formatPrice(item.total, getCurrentPriceFormat())} Gil</span>
+                  <span className="data-mobile-meta">×{item.quantity} · 总计 {formatPrice(taxed ? withMarketTax(item.total) : item.total, getCurrentPriceFormat())} Gil</span>
                 </div>
                 <div className="data-mobile-line data-mobile-sub">
                   <span className="data-mobile-meta">更新时间 {formatRelativeTime(item.lastReviewTime ?? 0, nowTs)}</span>
@@ -298,15 +300,31 @@ export function PriceSection({
       size="small"
       className="data-card"
       extra={
-        <Button
-          type="text"
-          size="small"
-          className="data-card-toggle"
-          icon={<SwapOutlined />}
-          onClick={handleToggleHistory}
-          title={showHistory ? "切换回出售列表" : "切换到交易历史"}
-        >
-        </Button>
+        <Space size={4}>
+          {!showHistory && (
+            <Tooltip title={taxed ? "当前显示税后价，点击恢复税前价" : "显示税后价（5%）"}>
+              <Button
+                type={taxed ? "primary" : "text"}
+                size="small"
+                className="data-card-tax"
+                icon={<PercentageOutlined />}
+                onClick={() => setTaxed((v) => { const next = !v; saveTaxEnabled(next); return next; })}
+              >
+                税率
+              </Button>
+            </Tooltip>
+          )}
+          <Tooltip title={showHistory ? "切换回出售列表" : "切换到交易历史"}>
+            <Button
+              type="text"
+              size="small"
+              className="data-card-toggle"
+              icon={<SwapOutlined />}
+              onClick={handleToggleHistory}
+            >
+            </Button>
+          </Tooltip>
+        </Space>
       }
     >
       {showHistory ? historyBody() : listingsBody()}
