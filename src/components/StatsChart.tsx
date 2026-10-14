@@ -22,6 +22,16 @@ const RANGE_OPTIONS = STATS_RANGE_OPTIONS.map((o) => ({ label: o.label, value: o
 
 type QualityKey = "nq" | "hq" | "all";
 
+/**
+ * x 轴日期刻度格式：跨年时 yyyy/mm/dd，不跨年时 mm/dd。
+ * label 为东八区 YYYY-MM-DD。
+ */
+function formatDateTick(label: string, spanYears: boolean): string {
+  const [y, m, d] = label.split("-");
+  if (!y || !m || !d) return label;
+  return spanYears ? `${y}/${m}/${d}` : `${m}/${d}`;
+}
+
 /** 东八区 YYYY-MM-DD 递增 1 天 */
 function addDay(date: string): string {
   const t = new Date(`${date}T00:00:00Z`);
@@ -121,6 +131,8 @@ const TEXT_DARK = "#b0aeb8";
 const WEEKEND_LINE_LIGHT = "rgba(120,113,127,0.35)";
 const WEEKEND_LINE_DARK = "rgba(176,174,184,0.35)";
 let weekendLineColor = WEEKEND_LINE_LIGHT;
+// 当前图表时间轴是否跨年（决定 x 轴刻度用 yyyy/mm/dd 还是 mm/dd；每次更新前刷新）
+let xLabelSpanYears = false;
 // 从左到右渐显动画进度（0~1）：仅数据变化触发的渐显动画更新，revealPlugin 按进度裁剪数据线区域
 let revealProgress = 1;
 // 是否有一次渐显动画在途（数据变化时置 true，完成后置 false）
@@ -290,6 +302,8 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
     const textColor = isDark ? TEXT_DARK : TEXT_LIGHT;
     // 主题变化时更新周末分隔虚线颜色（插件每次绘制时读取）
     weekendLineColor = isDark ? WEEKEND_LINE_DARK : WEEKEND_LINE_LIGHT;
+    // x 轴日期格式：时间范围跨年则用 yyyy/mm/dd，否则 mm/dd
+    xLabelSpanYears = new Set(filled.labels.map((l) => l.slice(0, 4))).size > 1;
 
     if (!chartRef.current) {
       chartRef.current = new Chart(canvas, {
@@ -346,18 +360,30 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
           },
           scales: {
             x: {
-              ticks: { color: textColor, maxTicksLimit: 8 },
+              ticks: {
+                color: textColor,
+                maxTicksLimit: 8,
+                callback(value) {
+                  const raw = this.getLabelForValue(value as number);
+                  return formatDateTick(raw, xLabelSpanYears);
+                },
+              },
               grid: { color: gridColor },
             },
             y: {
               position: "left",
-              title: { display: true, text: "价格 (Gil)", color: textColor },
+              title: { display: false },
               ticks: {
                 color: textColor,
                 callback: (value) => {
-                  // 轴刻度应用全局金额格式（避免过长刻度挤压图表）
+                  // 轴刻度应用全局金额格式（避免过长刻度挤压图表）；
+                  // 大于等于十万时改用「万」为单位，避免刻度过长
                   const num = Number(value);
-                  return Number.isFinite(num) ? formatPrice(num, getCurrentPriceFormat()) : value;
+                  if (!Number.isFinite(num)) return value;
+                  if (Math.abs(num) >= 100000) {
+                    return `${Number((num / 10000).toFixed(1))}万`;
+                  }
+                  return formatPrice(num, getCurrentPriceFormat());
                 },
               },
               grid: { color: gridColor },
@@ -448,6 +474,21 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
       chartRef.current?.destroy();
       chartRef.current = null;
     };
+  }, []);
+
+  // 移动端：触摸点击数据后 tooltip 会常驻，点击图表外的任意位置时主动清除
+  // （Chart.js 默认不监听画布外事件，故在文档级捕获 pointerdown）
+  useEffect(() => {
+    const clearTooltipOutside = (e: PointerEvent) => {
+      const chart = chartRef.current;
+      if (!chart || e.target === canvasRef.current) return;
+      if (chart.getActiveElements().length === 0) return;
+      chart.setActiveElements([]);
+      chart.tooltip?.setActiveElements([], { x: 0, y: 0 });
+      chart.update("none");
+    };
+    document.addEventListener("pointerdown", clearTooltipOutside, true);
+    return () => document.removeEventListener("pointerdown", clearTooltipOutside, true);
   }, []);
 
   const showQualitySwitch = canBeHq;
