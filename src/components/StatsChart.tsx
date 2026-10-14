@@ -127,10 +127,6 @@ const GRID_LIGHT = "rgba(0,0,0,0.06)";
 const GRID_DARK = "rgba(255,255,255,0.08)";
 const TEXT_LIGHT = "#78717f";
 const TEXT_DARK = "#b0aeb8";
-// 周末分隔虚线（垂直，画在周六/周日刻度处）；颜色随主题切换（模块级变量，插件每次绘制读取）
-const WEEKEND_LINE_LIGHT = "rgba(120,113,127,0.35)";
-const WEEKEND_LINE_DARK = "rgba(176,174,184,0.35)";
-let weekendLineColor = WEEKEND_LINE_LIGHT;
 // 当前图表时间轴是否跨年（决定 x 轴刻度用 yyyy/mm/dd 还是 mm/dd；每次更新前刷新）
 let xLabelSpanYears = false;
 // 从左到右渐显动画进度（0~1）：仅数据变化触发的渐显动画更新，revealPlugin 按进度裁剪数据线区域
@@ -142,7 +138,7 @@ let revealPending = false;
 /**
  * 自定义插件：数据线从左到右逐渐出现。
  * beforeDatasetsDraw 按当前动画进度裁剪图表区域左侧，afterDatasetsDraw 恢复，
- * 使坐标轴/网格/周末分隔线保持完整，只有折线（数据）随进度从左到右展开。
+ * 使坐标轴/网格保持完整，只有折线（数据）随进度从左到右展开。
  */
 const revealPlugin: Plugin = {
   id: "revealLeftToRight",
@@ -158,37 +154,6 @@ const revealPlugin: Plugin = {
   afterDatasetsDraw(chart) {
     if (revealProgress >= 1) return;
     chart.ctx.restore();
-  },
-};
-
-/**
- * 自定义插件：在周六/周日刻度位置画垂直虚线，区分工作日与周末。
- */
-const weekendSeparatorPlugin: Plugin = {
-  id: "weekendSeparator",
-  beforeDraw(chart) {
-    if (!weekendLineColor) return;
-    const xScale = chart.scales.x;
-    const area = chart.chartArea;
-    const labels = chart.data.labels as string[] | undefined;
-    if (!xScale || !labels || labels.length === 0 || !area) return;
-    const ctx = chart.ctx;
-    ctx.save();
-    ctx.strokeStyle = weekendLineColor;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    for (let i = 0; i < labels.length; i++) {
-      // date 为东八区 YYYY-MM-DD，用 UTC 解析避免本地时区偏移；周六=6 周日=0
-      const dow = new Date(`${labels[i]}T00:00:00Z`).getUTCDay();
-      if (dow === 0 || dow === 6) {
-        const x = xScale.getPixelForValue(i);
-        ctx.beginPath();
-        ctx.moveTo(x, area.top);
-        ctx.lineTo(x, area.bottom);
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
   },
 };
 
@@ -300,8 +265,6 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
     const rangeFill = isDark ? RANGE_FILL_DARK : RANGE_FILL_LIGHT;
     const gridColor = isDark ? GRID_DARK : GRID_LIGHT;
     const textColor = isDark ? TEXT_DARK : TEXT_LIGHT;
-    // 主题变化时更新周末分隔虚线颜色（插件每次绘制时读取）
-    weekendLineColor = isDark ? WEEKEND_LINE_DARK : WEEKEND_LINE_LIGHT;
     // x 轴日期格式：时间范围跨年则用 yyyy/mm/dd，否则 mm/dd
     xLabelSpanYears = new Set(filled.labels.map((l) => l.slice(0, 4))).size > 1;
 
@@ -309,7 +272,7 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
       chartRef.current = new Chart(canvas, {
         type: "line",
         data: { labels: [], datasets: [] },
-        plugins: [weekendSeparatorPlugin, revealPlugin],
+        plugins: [revealPlugin],
         options: {
           responsive: true,
           maintainAspectRatio: false,

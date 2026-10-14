@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination, Space } from "antd";
-import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined, PercentageOutlined } from "@ant-design/icons";
+import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined, CalculatorOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
 import { listingFields, historyFields, buildServerHueMap, renderWorldName, formatTradeTime, type GridField } from "../columns";
 import type { DcName } from "../constants";
@@ -304,11 +304,11 @@ export function PriceSection({
               type={taxed ? "primary" : "text"}
               size="small"
               className="data-card-tax"
-              icon={<PercentageOutlined />}
+              icon={<CalculatorOutlined />}
               title={taxed ? "当前显示税后价，点击恢复税前价" : "显示税后价（5%）"}
               onClick={() => setTaxed((v) => { const next = !v; storage.marketTax.save(next); return next; })}
             >
-              税率
+              
             </Button>
           )}
           <Button

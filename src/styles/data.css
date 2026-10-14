@@ -549,15 +549,13 @@
 
 /* ===== 出售列表标题栏「交易历史」切换按钮 ===== */
 .data-card-toggle.ant-btn {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 15px;
   padding-inline: 8px;
 }
 
 /* ===== 出售列表标题栏「税率」切换按钮 ===== */
 .data-card-tax.ant-btn {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 15px;
   padding-inline: 8px;
 }
 
