@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { message } from "antd";
-import type { ItemDbEntry, ItemDbVersion } from "../types";
-import { ITEM_DB_VERSION_URL, ITEM_DB_DATA_URL } from "../constants";
+import type { ItemDbEntry } from "../types";
+import { fetchItemDbVersion, fetchItemDbData } from "../api/itemDb";
 import { storage } from "../storage";
 
 interface ItemDatabaseState {
@@ -70,17 +70,16 @@ export function useItemDatabase() {
 
   useEffect(() => {
     let cancelled = false;
+    // 卸载时中止在途下载（版本检查 / 数据下载）
+    const controller = new AbortController();
 
     async function init() {
       try {
         // 第1步：获取远程版本
         let remoteVersion: string | null = null;
         try {
-          const verRes = await fetch(ITEM_DB_VERSION_URL);
-          if (verRes.ok) {
-            const verData: ItemDbVersion = await verRes.json();
-            remoteVersion = verData.version;
-          }
+          const verData = await fetchItemDbVersion(controller.signal);
+          remoteVersion = verData.version;
         } catch {
           // 版本文件获取失败，忽略，继续尝试用本地数据
         }
@@ -93,15 +92,12 @@ export function useItemDatabase() {
         if (remoteVersion && remoteVersion !== localVersion) {
           // 版本不一致或首次加载 → 下载新数据
           try {
-            const dataRes = await fetch(ITEM_DB_DATA_URL);
-            if (dataRes.ok) {
-              data = (await dataRes.json()) as ItemDbEntry[];
-              versionUsed = remoteVersion;
-              isNewDownload = true;
-              // 存入本地缓存
-              storage.itemDb.saveData(data);
-              storage.itemDb.saveVersion(remoteVersion);
-            }
+            data = await fetchItemDbData(controller.signal);
+            versionUsed = remoteVersion;
+            isNewDownload = true;
+            // 存入本地缓存
+            storage.itemDb.saveData(data);
+            storage.itemDb.saveVersion(remoteVersion);
           } catch {
             // 下载失败，尝试用本地缓存
           }
@@ -169,6 +165,7 @@ export function useItemDatabase() {
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, []);
 
