@@ -177,7 +177,7 @@ export function HistorySidebar({
           icon={<InfoCircleOutlined />}
           onClick={onOpenInfo}
         >
-          信息
+          关于
         </Button>
       </div>
 
