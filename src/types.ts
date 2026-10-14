@@ -20,6 +20,8 @@ export interface UniversalisListing {
   lastReviewTime?: number;
   /** 挂单唯一 ID（来自 Universalis，用于列表 rowKey） */
   listingID?: string;
+  /** 是否来自服装模特（不计入出售列表） */
+  onMannequin?: boolean | null;
 }
 
 export interface UniversalisHistory {
@@ -31,7 +33,7 @@ export interface UniversalisHistory {
   total?: number;
   buyerName: string;
   timestamp: number;
-  /** 是否从人偶展示架购买（可能为 null/undefined）；统计时应过滤 */
+  /** 是否从服装模特架购买（可能为 null/undefined）；统计时应过滤 */
   onMannequin?: boolean | null;
 }
 

@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties, type 
 import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination, Space } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined, CalculatorOutlined, ReloadOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
-import { listingFields, historyFields, buildServerHueMap, renderWorldName, formatTradeTime, type GridField } from "../columns";
+import { listingFields, historyFields, buildServerHueMap, renderWorldName, formatTradeTime, renderMannequinTag, type GridField } from "../columns";
 import type { DcName } from "../constants";
 import type { DcServerMap } from "../hooks/useRegionScope";
 import { formatPrice, getCurrentPriceFormat, withMarketTax } from "../utils/formatPrice";
@@ -136,6 +136,8 @@ interface PriceSectionProps {
   listingsError: boolean;
   /** 交易历史最近一次请求是否失败 */
   historyError: boolean;
+  /** 出售列表中被过滤的服装模特挂单数量 */
+  filteredMannequinCount: number;
   fetchPriceData: (id: number, region: string, name?: string, hqOnly?: boolean) => void;
   /** 交易历史懒加载：点击标题栏「交易历史」按钮时请求 */
   fetchPriceHistory: (id: number, region: string) => void;
@@ -150,6 +152,7 @@ interface PriceSectionProps {
 export function PriceSection({
   selectedItem, scope, dcServer, onScopeChange, onSelectServer,
   priceData, listingsLoading, historyLoading, listingsError, historyError,
+  filteredMannequinCount,
   fetchPriceData, fetchPriceHistory,
   viewTab, onViewTabChange, onWiki, isDark,
 }: PriceSectionProps) {
@@ -307,7 +310,10 @@ export function PriceSection({
                   <span className="data-mobile-meta">数量 ×{item.quantity}</span>
                 </div>
                 <div className="data-mobile-line data-mobile-sub">
-                  <span className="data-mobile-meta">{item.buyerName}</span>
+                  <span className="data-mobile-meta">
+                    {item.onMannequin === true && renderMannequinTag()}
+                    {item.buyerName}
+                  </span>
                   <span className="time-cell">{formatTradeTime(item.timestamp)}</span>
                 </div>
               </div>
@@ -320,7 +326,20 @@ export function PriceSection({
 
   const dataCard = () => (
     <Card
-      title={<>{showHistory ? <HistoryOutlined /> : <ShoppingCartOutlined />} {showHistory ? "交易历史" : "出售列表"}</>}
+      title={
+        <>
+          {showHistory ? <HistoryOutlined /> : <ShoppingCartOutlined />}{" "}
+          {showHistory ? "交易历史" : "出售列表"}
+          {!showHistory && filteredMannequinCount > 0 && (
+            <Typography.Text
+              type="secondary"
+              className="data-card-filter-note"
+            >
+              已过滤 {filteredMannequinCount} 条服装模特交易数据
+            </Typography.Text>
+          )}
+        </>
+      }
       size="small"
       className="data-card"
       extra={

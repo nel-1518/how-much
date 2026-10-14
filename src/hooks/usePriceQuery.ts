@@ -37,6 +37,16 @@ function normalizeHistoryEntries(
   return list.map((h) => (h.worldName ? h : { ...h, worldName }));
 }
 
+/** 统计被过滤的服装模特（onMannequin=true）挂单数量 */
+function countMannequin(listings: UniversalisListing[] | undefined): number {
+  if (!listings?.length) return 0;
+  let n = 0;
+  for (const l of listings) {
+    if (l.onMannequin === true) n++;
+  }
+  return n;
+}
+
 /** 合并出售列表与交易历史；任一未到时用空数组占位（先到先渲染） */
 function buildMerged(
   listingsData: UniversalisResponse | null,
@@ -44,7 +54,8 @@ function buildMerged(
 ): UniversalisResponse {
   return normalizeWorldNames({
     ...(listingsData ?? {}),
-    listings: listingsData?.listings ?? [],
+    // 出售列表不展示服装模特（onMannequin=true）的挂单
+    listings: (listingsData?.listings ?? []).filter((l) => l.onMannequin !== true),
     recentHistory: recentHistory ?? [],
   });
 }
@@ -62,6 +73,8 @@ export function usePriceQuery() {
   // 请求失败标记（供上层展示「重新获取」按钮）
   const [listingsError, setListingsError] = useState(false);
   const [historyError, setHistoryError] = useState(false);
+  // 本次出售列表中被过滤的服装模特挂单数量（供标题旁标注）
+  const [filteredMannequinCount, setFilteredMannequinCount] = useState(0);
   // 出售列表按 item+区域+品质 缓存；交易历史按 item+区域 缓存（与品质无关，懒加载）
   const listingsCache = useRef<Map<string, UniversalisResponse>>(new Map());
   const historyCache = useRef<Map<string, UniversalisHistory[]>>(new Map());
@@ -124,6 +137,7 @@ export function usePriceQuery() {
       setListingsLoading(false);
       setHistoryLoading(false);
       setListingsError(false);
+      setFilteredMannequinCount(countMannequin(cachedListings.listings));
       return;
     }
 
@@ -134,6 +148,7 @@ export function usePriceQuery() {
     setListingsLoading(true);
     setHistoryLoading(false);
     setListingsError(false);
+    setFilteredMannequinCount(0);
 
     // 查询目标直接传中文名："中国"→china，大区/服务器名作为路径本身（Universalis 支持）
     const path = REGION_MAP[regionKey] ?? regionKey;
@@ -151,6 +166,7 @@ export function usePriceQuery() {
         listingsDataRef.current = listingsData;
         setPriceData(buildMerged(listingsData, historyDataRef.current));
         setListingsError(false);
+        setFilteredMannequinCount(countMannequin(listingsData.listings));
       })
       .catch(() => {
         if (activeScopeRef.current === skey) {
@@ -169,6 +185,7 @@ export function usePriceQuery() {
     historyLoading,
     listingsError,
     historyError,
+    filteredMannequinCount,
     setPriceData,
     fetchPriceData: useCallback(
       (id: number, region: string, _name?: string, hqOnly = false) => doFetch(id, region, hqOnly),
@@ -187,6 +204,7 @@ export function usePriceQuery() {
       setHistoryLoading(false);
       setListingsError(false);
       setHistoryError(false);
+      setFilteredMannequinCount(0);
     }, []),
   };
 }

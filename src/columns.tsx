@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Tag } from "antd";
+import { LikeOutlined } from "@ant-design/icons";
 import { WORLD_TO_DC, DC_ICON_MAP } from "./constants";
 import { formatPrice, getCurrentPriceFormat, withMarketTax } from "./utils/formatPrice";
 import type { UniversalisListing, UniversalisHistory } from "./types";
@@ -27,6 +28,21 @@ export const renderQualityTag = (hq: boolean) =>
   ) : (
     <Tag className="nq-tag">NQ</Tag>
   );
+
+/** 服装模特来源标记：买家名左侧的图标标签 */
+export const renderMannequinTag = () => (
+  <Tag color="gold" className="mannequin-tag" title="从服装模特购买">
+    <LikeOutlined />
+  </Tag>
+);
+
+/** 交易历史买家单元格：从服装模特购买时，名称左侧标注图标 */
+export const renderBuyer = (h: UniversalisHistory) => (
+  <span className="buyer-cell">
+    {h.onMannequin === true && renderMannequinTag()}
+    {h.buyerName}
+  </span>
+);
 
 /** 单价单元格 */
 const renderPrice = (v: number) => (
@@ -109,7 +125,7 @@ export const historyFields = (): GridField<UniversalisHistory>[] => [
   { title: "品质", width: "minmax(54px, 0.7fr)", align: "center", render: (h) => renderQualityTag(h.hq) },
   { title: "单价", width: "1.8fr", render: (h) => renderPrice(h.pricePerUnit) },
   { title: "数量", width: "0.7fr", align: "center", render: (h) => h.quantity },
-  { title: "买家", width: "1.2fr", render: (h) => <span className="buyer-cell">{h.buyerName}</span> },
+  { title: "买家", width: "1.2fr", render: (h) => renderBuyer(h) },
   {
     title: "日期",
     width: "minmax(100px, 1.1fr)",
