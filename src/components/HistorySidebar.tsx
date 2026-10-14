@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Button, Empty, Popconfirm, Space, Tooltip } from "antd";
+import { Button, Empty, Popconfirm, Space } from "antd";
 import {
   ClockCircleOutlined,
   ClearOutlined,
@@ -140,24 +140,22 @@ export function HistorySidebar({
               {item.pinned && <PushpinOutlined className="sidebar-pin-icon" />}
               <span className="sidebar-history-name" title={item.name}>{item.name}</span>
               <span className="sidebar-history-actions">
-                <Tooltip title={item.pinned ? "取消固定" : "固定到最前"}>
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<PushpinOutlined />}
-                    className="sidebar-item-btn"
-                    onClick={(e) => { e.stopPropagation(); onTogglePin(item.id); }}
-                  />
-                </Tooltip>
-                <Tooltip title="删除">
-                  <Button
-                    type="text"
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    className="sidebar-item-btn"
-                    onClick={(e) => { e.stopPropagation(); onRemoveHistory(item.id); }}
-                  />
-                </Tooltip>
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<PushpinOutlined />}
+                  title={item.pinned ? "取消固定" : "固定到最前"}
+                  className="sidebar-item-btn"
+                  onClick={(e) => { e.stopPropagation(); onTogglePin(item.id); }}
+                />
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DeleteOutlined />}
+                  title="删除"
+                  className="sidebar-item-btn"
+                  onClick={(e) => { e.stopPropagation(); onRemoveHistory(item.id); }}
+                />
               </span>
             </div>
           ))

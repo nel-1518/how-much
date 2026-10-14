@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Button, Dropdown, Tooltip, Segmented, type MenuProps } from "antd";
+import { Button, Dropdown, Segmented, type MenuProps } from "antd";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
@@ -54,14 +54,13 @@ export function TopNav({ search, viewMode, onViewModeChange, sidebarOpen, onTogg
     <header className="top-nav">
       <div className="top-nav-inner">
         <div className="top-nav-left">
-          <Tooltip title={sidebarOpen ? "收起侧栏" : "展开侧栏"}>
-            <Button
-              type="text"
-              className="sidebar-toggle"
-              icon={sidebarOpen ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
-              onClick={onToggleSidebar}
-            />
-          </Tooltip>
+          <Button
+            type="text"
+            className="sidebar-toggle"
+            icon={sidebarOpen ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
+            title={sidebarOpen ? "收起侧栏" : "展开侧栏"}
+            onClick={onToggleSidebar}
+          />
         </div>
         <div className="top-nav-search">
           {viewMode === "batch" ? (
@@ -81,23 +80,22 @@ export function TopNav({ search, viewMode, onViewModeChange, sidebarOpen, onTogg
               { label: <span><UnorderedListOutlined /><span className="seg-label">批量查价</span></span>, value: "batch" },
             ]}
           />
-          <Tooltip title={`主题：${THEME_LABELS[themeMode]}`}>
-            <Dropdown
-              menu={{
-                items: THEME_MENU_ITEMS,
-                selectedKeys: [themeMode],
-                onClick: handleThemeMenuClick,
-              }}
-              trigger={["click"]}
-              placement="bottomRight"
-            >
-              <Button
-                type="text"
-                className="theme-toggle"
-                icon={THEME_ICONS[effectiveTheme]}
-              />
-            </Dropdown>
-          </Tooltip>
+          <Dropdown
+            menu={{
+              items: THEME_MENU_ITEMS,
+              selectedKeys: [themeMode],
+              onClick: handleThemeMenuClick,
+            }}
+            trigger={["click"]}
+            placement="bottomRight"
+          >
+            <Button
+              type="text"
+              className="theme-toggle"
+              title={`主题：${THEME_LABELS[themeMode]}`}
+              icon={THEME_ICONS[effectiveTheme]}
+            />
+          </Dropdown>
         </div>
       </div>
     </header>

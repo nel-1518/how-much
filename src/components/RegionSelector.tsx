@@ -1,4 +1,4 @@
-import { Button, Dropdown, Space, Tooltip, type MenuProps } from "antd";
+import { Button, Dropdown, Space, type MenuProps } from "antd";
 import {
   GlobalOutlined,
   DownOutlined,
@@ -21,7 +21,8 @@ interface RegionSelectorProps {
   onHqOnlyChange: (hqOnly: boolean) => void;
 }
 
-/** 大区/服务器选择栏：「中国」按钮 + 四个大区（主按钮快速切换 + 功能菜单选服务器）+ 只看 HQ 开关 */
+/** 大区/服务器选择栏：「中国」按钮 + 四个大区（主按钮快速切换 + 功能菜单选服务器）+ 只看 HQ 开关
+ *  移动端按钮结构不变，仅隐藏名称文字只留图标，五个按钮平分一行宽度 */
 export function RegionSelector({
   scope, dcServer, hqOnly, canBeHq,
   onScopeChange, onSelectServer, onHqOnlyChange,
@@ -59,7 +60,7 @@ export function RegionSelector({
         icon={<GlobalOutlined className="region-drop-global-icon" />}
         onClick={() => onScopeChange(DEFAULT_REGION)}
       >
-        {DEFAULT_REGION}
+        <span className="region-name">{DEFAULT_REGION}</span>
       </Button>
 
       {DC_NAMES.map((dc) => {
@@ -78,8 +79,8 @@ export function RegionSelector({
         };
         const mainTitle = active
           ? hasServer
-            ? `当前查询：${scope}（点击重新查询该服务器）`
-            : `当前查询：${dc}全大区（点击重新查询）`
+            ? `当前查询：${scope}`
+            : `当前查询：${dc}全大区`
           : hasServer
             ? `点击查询${dc}大区：${remembered}`
             : `点击切换到${dc}大区`;
@@ -92,7 +93,8 @@ export function RegionSelector({
               onClick={handleMainClick}
               title={mainTitle}
             >
-              {label}
+              {/* 桌面端显示完整名称；移动端隐藏文字只显示图标（见 data.css） */}
+              <span className="region-name">{label}</span>
             </Button>
             <Dropdown
               menu={buildMenu(dc)}
@@ -111,16 +113,15 @@ export function RegionSelector({
       })}
 
       {canBeHq && (
-        <Tooltip title={hqOnly ? "取消只看 HQ，恢复全部品质" : "只看 HQ 品质的交易"}>
-          <Button
-            type={hqOnly ? "primary" : "default"}
-            size="small"
-            className="hq-only-toggle"
-            onClick={() => onHqOnlyChange(!hqOnly)}
-          >
-            只看 HQ
-          </Button>
-        </Tooltip>
+        <Button
+          type={hqOnly ? "primary" : "default"}
+          size="small"
+          title={hqOnly ? "取消只看 HQ，恢复全部品质" : "只看 HQ 品质的交易"}
+          className="hq-only-toggle"
+          onClick={() => onHqOnlyChange(!hqOnly)}
+        >
+          只看 HQ
+        </Button>
       )}
     </div>
   );
@@ -134,3 +135,4 @@ function dcOf(scope: string): DcName | undefined {
   }
   return undefined;
 }
+

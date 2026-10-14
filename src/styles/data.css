@@ -257,6 +257,54 @@
   font-weight: 600;
 }
 
+/* 区服名称文字：桌面端显示，移动端隐藏（见下方媒体查询） */
+.region-name {
+  display: inline;
+}
+
+/* ===== 移动端：五个按钮平分一行，只显示图标 ===== */
+@media (max-width: 768px) {
+  .region-selector-bar {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+  /* 内联到物品标题行时占满整行，让五个按钮铺开 */
+  .price-header .region-selector-bar {
+    width: 100%;
+    margin-left: 0;
+  }
+  /* 只显示图标：隐藏「中国」/大区/服务器名称文字 */
+  .region-name {
+    display: none;
+  }
+  /* 五个按钮平分宽度 */
+  .china-btn {
+    width: 100%;
+    padding-inline: 0;
+  }
+  .region-dc-compact {
+    width: 100%;
+    min-width: 0;
+  }
+  .region-dc-main {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+    padding-inline: 0;
+  }
+  .region-dc-more {
+    flex: 0 0 auto;
+    width: 22px;
+    padding-inline: 0;
+  }
+  /* 只看 HQ 不参与平分，单独占下一行 */
+  .region-selector-bar .hq-only-toggle {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
+
 /* ===== 数据卡片 ===== */
 .data-card {
   height: 100%;

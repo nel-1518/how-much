@@ -320,6 +320,8 @@ export function BatchPriceSection({
       key: "updated",
       width: 80,
       align: "right",
+      // 移动端不显示更新时间
+      responsive: ["md"],
       render: (_, item) => {
         const p = computePrices(resultMap.get(item.id), level, hqOnly);
         return <span className="time-cell">{formatRelativeTime(p.lastUpload)}</span>;

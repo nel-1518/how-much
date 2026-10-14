@@ -1,4 +1,4 @@
-import { Button, Tooltip, Popconfirm, Space, Typography } from "antd";
+import { Button, Popconfirm, Space, Typography } from "antd";
 import { ClockCircleOutlined, ClearOutlined, PushpinOutlined, DeleteOutlined } from "@ant-design/icons";
 import type { SearchHistoryItem } from "../types";
 
@@ -40,12 +40,11 @@ export function HistorySection({
                 onClick={() => onSearchFromHistory(item)}
               >
                 <span className="search-history-name">{item.name}</span>
-                <Tooltip title={item.pinned ? "取消固定" : "固定到最前"}>
-                  <Button type="text" size="small" icon={<PushpinOutlined />}
-                    onClick={(e) => { e.stopPropagation(); onTogglePin(item.id); }}
-                    className="history-pin-btn"
-                  />
-                </Tooltip>
+                <Button type="text" size="small" icon={<PushpinOutlined />}
+                  onClick={(e) => { e.stopPropagation(); onTogglePin(item.id); }}
+                  title={item.pinned ? "取消固定" : "固定到最前"}
+                  className="history-pin-btn"
+                />
                 <Button type="text" size="small" icon={<DeleteOutlined />}
                   onClick={(e) => { e.stopPropagation(); onRemoveHistory(item.id); }}
                   className="history-del-btn"

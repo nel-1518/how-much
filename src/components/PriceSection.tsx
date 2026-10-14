@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination, Tooltip, Space } from "antd";
+import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination, Space } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined, PercentageOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
-import { listingFields, historyFields, buildServerHueMap, renderWorldName, formatTradeTime, formatRelativeTime, type GridField } from "../columns";
+import { listingFields, historyFields, buildServerHueMap, renderWorldName, formatTradeTime, type GridField } from "../columns";
 import type { DcName } from "../constants";
 import type { DcServerMap } from "../hooks/useRegionScope";
 import { formatPrice, getCurrentPriceFormat, withMarketTax } from "../utils/formatPrice";
@@ -235,9 +235,6 @@ export function PriceSection({
                   </span>
                   <span className="data-mobile-meta">×{item.quantity} · 总计 {formatPrice(taxed ? withMarketTax(item.total) : item.total, getCurrentPriceFormat())} Gil</span>
                 </div>
-                <div className="data-mobile-line data-mobile-sub">
-                  <span className="data-mobile-meta">更新时间 {formatRelativeTime(item.lastReviewTime ?? 0, nowTs)}</span>
-                </div>
               </div>
             )}
           />
@@ -303,28 +300,26 @@ export function PriceSection({
       extra={
         <Space size={4}>
           {!showHistory && (
-            <Tooltip title={taxed ? "当前显示税后价，点击恢复税前价" : "显示税后价（5%）"}>
-              <Button
-                type={taxed ? "primary" : "text"}
-                size="small"
-                className="data-card-tax"
-                icon={<PercentageOutlined />}
-                onClick={() => setTaxed((v) => { const next = !v; storage.marketTax.save(next); return next; })}
-              >
-                税率
-              </Button>
-            </Tooltip>
-          )}
-          <Tooltip title={showHistory ? "切换回出售列表" : "切换到交易历史"}>
             <Button
-              type="text"
+              type={taxed ? "primary" : "text"}
               size="small"
-              className="data-card-toggle"
-              icon={<SwapOutlined />}
-              onClick={handleToggleHistory}
+              className="data-card-tax"
+              icon={<PercentageOutlined />}
+              title={taxed ? "当前显示税后价，点击恢复税前价" : "显示税后价（5%）"}
+              onClick={() => setTaxed((v) => { const next = !v; storage.marketTax.save(next); return next; })}
             >
+              税率
             </Button>
-          </Tooltip>
+          )}
+          <Button
+            type="text"
+            size="small"
+            className="data-card-toggle"
+            icon={<SwapOutlined />}
+            title={showHistory ? "切换回出售列表" : "切换到交易历史"}
+            onClick={handleToggleHistory}
+          >
+          </Button>
         </Space>
       }
     >
