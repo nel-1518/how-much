@@ -1,20 +1,19 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { message } from "antd";
 import type { BatchItem, AggregatedResponse } from "../types";
-import { fetchAggregated, MAX_BATCH_ITEMS } from "../utils/aggregatedApi";
+import { fetchAggregated, MAX_BATCH_ITEMS } from "../api/universalis";
+import { useCachedFetch } from "./useCachedFetch";
 
 /**
  * 批量查价 Hook：管理已选物品、查询结果与加载状态；带内存缓存。
  * AggregatedResponse.results 以 itemId 为键返回，展示顺序由调用方按已选顺序映射。
- * 内部用请求序号使切换范围/清空后，仍在途的旧请求结果被丢弃，避免串数据。
+ * 请求缓存、竞态守卫与取消由 `useCachedFetch` 统一处理：切换范围/清空后，
+ * 仍在途的旧请求结果会被丢弃，避免串数据。
  */
 export function useBatchPriceQuery() {
   const [items, setItems] = useState<BatchItem[]>([]);
-  const [results, setResults] = useState<AggregatedResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const cache = useRef<Map<string, AggregatedResponse>>(new Map());
-  const seqRef = useRef(0);
+  const { data: results, loading, error, setData, run, cancel } =
+    useCachedFetch<AggregatedResponse>();
 
   const addByEntry = useCallback((entry: { id: number; name: string; canBeHq?: boolean }) => {
     setItems((prev) => {
@@ -33,44 +32,25 @@ export function useBatchPriceQuery() {
 
   /** 清空结果（保留已选物品）；同时使在途请求失效 */
   const clearResults = useCallback(() => {
-    seqRef.current++;
-    setResults(null);
-    setError(null);
-    setLoading(false);
-  }, []);
+    cancel();
+    setData(null);
+  }, [cancel, setData]);
 
   const clear = useCallback(() => {
-    seqRef.current++;
+    cancel();
     setItems([]);
-    setResults(null);
-    setError(null);
-    setLoading(false);
-  }, []);
+    setData(null);
+  }, [cancel, setData]);
 
-  const query = useCallback(async (scope: string) => {
-    const ids = items.map((i) => i.id);
-    if (ids.length === 0) return;
-    const key = scope + "-" + ids.join(",");
-    const seq = ++seqRef.current;
-    const cached = cache.current.get(key);
-    if (cached) { setResults(cached); setError(null); return; }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchAggregated(scope, ids);
-      if (seq !== seqRef.current) return; // 已切换范围/已清空，丢弃过期结果
-      cache.current.set(key, data);
-      setResults(data);
-    } catch (e) {
-      if (seq !== seqRef.current) return;
-      const msg = e instanceof Error ? e.message : "查询失败";
-      setError(msg);
-      message.error(msg);
-    } finally {
-      if (seq === seqRef.current) setLoading(false);
-    }
-  }, [items]);
+  const query = useCallback(
+    async (scope: string) => {
+      const ids = items.map((i) => i.id);
+      if (ids.length === 0) return;
+      const key = scope + "-" + ids.join(",");
+      await run(key, (signal) => fetchAggregated(scope, ids, signal));
+    },
+    [items, run],
+  );
 
   return { items, results, loading, error, addByEntry, removeItem, clear, clearResults, query };
 }

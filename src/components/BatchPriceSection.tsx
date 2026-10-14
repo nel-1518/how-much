@@ -118,6 +118,11 @@ export function BatchPriceSection({
 }: BatchPriceSectionProps) {
   const batch = useBatchPriceQuery();
   const { sets, saveSet, removeSet } = useSavedItemSets();
+
+  // 批量查价失败由具体 UI 决定提示方式（hook 只返回 error 状态）
+  useEffect(() => {
+    if (batch.error) message.error(batch.error);
+  }, [batch.error]);
   const [hqOnly, setHqOnly] = useState(false);
   const [bulkInput, setBulkInput] = useState("");
   const [setName, setSetName] = useState("");
