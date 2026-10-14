@@ -37,22 +37,26 @@
 
 ## 快速开始
 
-要求 Node.js 20+。
+要求 Node.js 22.18+（Babel 8 的最低要求）。
+
+本仓库使用 **pnpm** 作为包管理器（见 `package.json` 的 `packageManager` 字段与 `pnpm-lock.yaml`），请勿再生成 `package-lock.json`。
 
 ```bash
-npm install      # 安装依赖
-npm run dev      # 启动开发服务器（默认 http://localhost:5173）
+pnpm install     # 安装依赖
+pnpm dev         # 启动开发服务器（默认 http://localhost:5173）
 ```
 
 ### 可用脚本
 
 | 命令 | 说明 |
 | --- | --- |
-| `npm run dev` | 启动 Vite 开发服务器（`0.0.0.0:5173`） |
-| `npm run build` | 类型检查并构建，产出到 `dist/`（用于子路径部署） |
-| `npm run build:root` | 以根路径 `--base=/` 构建 |
-| `npm run preview` | 本地预览构建产物 |
-| `npm run lint` | 运行 ESLint 检查 |
+| `pnpm dev` | 启动 Vite 开发服务器（`0.0.0.0:5173`） |
+| `pnpm build` | 类型检查并构建，产出到 `dist/`（用于子路径部署） |
+| `pnpm build:root` | 以根路径 `--base=/` 构建 |
+| `pnpm preview` | 本地预览构建产物 |
+| `pnpm lint` | 运行 ESLint 检查 |
+
+> **工具链别名说明**：`package.json` 中 `typescript` 通过 npm alias 指向 `@typescript/typescript6`（JS 版编译器，构建用），`@typescript/native` 指向 `typescript@7`（Go 原生编译器）。这些别名是刻意配置，不是笔误。
 
 > 项目的 Vite `base` 默认配置为 `/how-much/`，若部署在根路径请使用 `build:root`。
 
@@ -121,4 +125,4 @@ node scripts/process-items.cjs [输出目录]
 
 ## 部署
 
-仓库已配置 GitHub Actions（`.github/workflows/deploy.yml`）：向 `master` 分支推送或手动触发时，自动执行 `npm run build` 并部署到 GitHub Pages。
+仓库已配置 GitHub Actions（`.github/workflows/deploy.yml`）：向 `master` 分支推送或手动触发时，自动执行 `pnpm build` 并部署到 GitHub Pages。
