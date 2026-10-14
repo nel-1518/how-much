@@ -102,6 +102,8 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     setShowResults(true);
     setSelectedItem(null);
     setActiveIndex(0);
+    // 切换物品时重置展示页签：每次查询都先显示出售列表
+    setViewTab("listings");
     clearPrice();
 
     // 从本地数据库查找
