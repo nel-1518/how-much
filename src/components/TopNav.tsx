@@ -11,6 +11,7 @@ import {
 } from "@ant-design/icons";
 import { SearchSection, type SearchSectionProps } from "./SearchSection";
 import { useTheme } from "../contexts/ThemeContext";
+import { useSidebar } from "../contexts/SidebarContext";
 import type { ThemeMode } from "../constants";
 import type { ViewMode } from "../types";
 
@@ -18,8 +19,6 @@ interface TopNavProps {
   search: SearchSectionProps;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
-  sidebarOpen: boolean;
-  onToggleSidebar: () => void;
 }
 
 const THEME_ICONS: Record<ThemeMode, ReactNode> = {
@@ -41,8 +40,9 @@ const THEME_MENU_ITEMS: MenuProps["items"] = [
 ];
 
 /** 顶部导航栏：搜索栏居中，左侧为侧栏开关，右侧为主题选择菜单 */
-export function TopNav({ search, viewMode, onViewModeChange, sidebarOpen, onToggleSidebar }: TopNavProps) {
+export function TopNav({ search, viewMode, onViewModeChange }: TopNavProps) {
   const { themeMode, isDark, setThemeMode } = useTheme();
+  const { open: sidebarOpen, toggle: onToggleSidebar } = useSidebar();
   const handleThemeMenuClick: MenuProps["onClick"] = ({ key }) => {
     setThemeMode(key as ThemeMode);
   };

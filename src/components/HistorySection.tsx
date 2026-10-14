@@ -1,19 +1,11 @@
 import { Button, Popconfirm, Space, Typography } from "antd";
 import { ClockCircleOutlined, ClearOutlined, PushpinOutlined, DeleteOutlined } from "@ant-design/icons";
-import type { SearchHistoryItem } from "../types";
-
-interface HistorySectionProps {
-  sortedHistory: SearchHistoryItem[];
-  onSearchFromHistory: (item: SearchHistoryItem) => void;
-  onRemoveHistory: (id: number) => void;
-  onClearHistory: () => void;
-  onTogglePin: (id: number) => void;
-}
+import { useSearchHistoryContext } from "../contexts/SearchHistoryContext";
 
 /** 搜索历史标签列表组件 */
-export function HistorySection({
-  sortedHistory, onSearchFromHistory, onRemoveHistory, onClearHistory, onTogglePin,
-}: HistorySectionProps) {
+export function HistorySection() {
+  const { sortedHistory, searchFromHistory, removeHistory, clearHistory, togglePin } =
+    useSearchHistoryContext();
   return (
     <div className="search-history">
       {sortedHistory.length === 0 ? (
@@ -27,7 +19,7 @@ export function HistorySection({
               <ClockCircleOutlined /> 搜索历史
             </span>
             <Space size="small">
-              <Popconfirm title="确定清空全部搜索历史？" onConfirm={onClearHistory} okText="确定" cancelText="取消">
+              <Popconfirm title="确定清空全部搜索历史？" onConfirm={clearHistory} okText="确定" cancelText="取消">
                 <Button type="text" size="small" icon={<ClearOutlined />} className="history-clear-btn">清空</Button>
               </Popconfirm>
             </Space>
@@ -37,16 +29,16 @@ export function HistorySection({
               <div
                 key={item.id}
                 className={`search-history-item${item.pinned ? " pinned" : ""}`}
-                onClick={() => onSearchFromHistory(item)}
+                onClick={() => searchFromHistory(item)}
               >
                 <span className="search-history-name">{item.name}</span>
                 <Button type="text" size="small" icon={<PushpinOutlined />}
-                  onClick={(e) => { e.stopPropagation(); onTogglePin(item.id); }}
+                  onClick={(e) => { e.stopPropagation(); togglePin(item.id); }}
                   title={item.pinned ? "取消固定" : "固定到最前"}
                   className="history-pin-btn"
                 />
                 <Button type="text" size="small" icon={<DeleteOutlined />}
-                  onClick={(e) => { e.stopPropagation(); onRemoveHistory(item.id); }}
+                  onClick={(e) => { e.stopPropagation(); removeHistory(item.id); }}
                   className="history-del-btn"
                 />
               </div>

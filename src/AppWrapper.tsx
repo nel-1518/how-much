@@ -3,6 +3,8 @@ import App from "./App.tsx";
 import zhCN from "antd/locale/zh_CN";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext.tsx";
 import { RegionScopeProvider } from "./contexts/RegionScopeContext.tsx";
+import { SidebarProvider } from "./contexts/SidebarContext.tsx";
+import { DialogsProvider } from "./contexts/DialogsContext.tsx";
 
 /** 读取主题上下文并配置 Ant Design（ConfigProvider 依赖主题值，故置于 Provider 之内） */
 function ThemedApp() {
@@ -23,7 +25,11 @@ function ThemedApp() {
 const AppWrapper: React.FC = () => (
   <ThemeProvider>
     <RegionScopeProvider>
-      <ThemedApp />
+      <SidebarProvider>
+        <DialogsProvider>
+          <ThemedApp />
+        </DialogsProvider>
+      </SidebarProvider>
     </RegionScopeProvider>
   </ThemeProvider>
 );

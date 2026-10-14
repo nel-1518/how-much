@@ -10,42 +10,17 @@ import {
 } from "@ant-design/icons";
 import { MIN_SIDEBAR_W, MAX_SIDEBAR_W } from "../constants";
 import type { SearchHistoryItem } from "../types";
-
-interface HistorySidebarProps {
-  open: boolean;
-  width: number;
-  sortedHistory: SearchHistoryItem[];
-  /** 当前正在查看的物品 ID，用于高亮 */
-  activeItemId: number | null;
-  onSearchFromHistory: (item: SearchHistoryItem) => void;
-  onRemoveHistory: (id: number) => void;
-  onClearHistory: () => void;
-  onTogglePin: (id: number) => void;
-  onClose: () => void;
-  onOpenSettings: () => void;
-  onOpenInfo: () => void;
-  onResizeStart: () => void;
-  onResize: (width: number) => void;
-  onResizeEnd: (width: number) => void;
-}
+import { useSidebar } from "../contexts/SidebarContext";
+import { useDialogs } from "../contexts/DialogsContext";
+import { useSearchHistoryContext } from "../contexts/SearchHistoryContext";
 
 /** 左侧历史侧栏：固定历史 + 最近搜索列表，点击条目直接切换查价 */
-export function HistorySidebar({
-  open,
-  width,
-  sortedHistory,
-  activeItemId,
-  onSearchFromHistory,
-  onRemoveHistory,
-  onClearHistory,
-  onTogglePin,
-  onClose,
-  onOpenSettings,
-  onOpenInfo,
-  onResizeStart,
-  onResize,
-  onResizeEnd,
-}: HistorySidebarProps) {
+export function HistorySidebar() {
+  const { open, width, close, resizeStart, resize, resizeEnd } = useSidebar();
+  const { sortedHistory, activeItemId, searchFromHistory, removeHistory, clearHistory, togglePin } =
+    useSearchHistoryContext();
+  const { openSettings, openInfo } = useDialogs();
+
   const listRef = useRef<HTMLDivElement>(null);
   const widthRef = useRef(width);
 
@@ -62,10 +37,10 @@ export function HistorySidebar({
 
   const handleSelect = (item: SearchHistoryItem) => {
     if (item.id !== activeItemId) {
-      onSearchFromHistory(item);
+      searchFromHistory(item);
     }
     // 移动端选择后自动收起，桌面端保持展开方便连续浏览
-    if (window.innerWidth <= 768) onClose();
+    if (window.innerWidth <= 768) close();
   };
 
   /** 按住右边缘拖拽调整宽度，限制在 MIN/MAX 之间 */
@@ -74,7 +49,7 @@ export function HistorySidebar({
     e.preventDefault();
     const startX = e.clientX;
     const startWidth = widthRef.current;
-    onResizeStart();
+    resizeStart();
 
     const handleMove = (ev: PointerEvent) => {
       const next = Math.min(
@@ -82,7 +57,7 @@ export function HistorySidebar({
         Math.max(MIN_SIDEBAR_W, startWidth + (ev.clientX - startX)),
       );
       widthRef.current = next;
-      onResize(next);
+      resize(next);
     };
     const handleEnd = () => {
       window.removeEventListener("pointermove", handleMove);
@@ -90,7 +65,7 @@ export function HistorySidebar({
       window.removeEventListener("pointercancel", handleEnd);
       document.body.style.cursor = "";
       document.body.style.userSelect = "";
-      onResizeEnd(widthRef.current);
+      resizeEnd(widthRef.current);
     };
     window.addEventListener("pointermove", handleMove);
     window.addEventListener("pointerup", handleEnd);
@@ -109,7 +84,7 @@ export function HistorySidebar({
           {sortedHistory.length > 0 && (
             <Popconfirm
               title="确定清空全部搜索历史？"
-              onConfirm={onClearHistory}
+              onConfirm={clearHistory}
               okText="确定"
               cancelText="取消"
             >
@@ -146,7 +121,7 @@ export function HistorySidebar({
                   icon={<PushpinOutlined />}
                   title={item.pinned ? "取消固定" : "固定到最前"}
                   className="sidebar-item-btn"
-                  onClick={(e) => { e.stopPropagation(); onTogglePin(item.id); }}
+                  onClick={(e) => { e.stopPropagation(); togglePin(item.id); }}
                 />
                 <Button
                   type="text"
@@ -154,7 +129,7 @@ export function HistorySidebar({
                   icon={<DeleteOutlined />}
                   title="删除"
                   className="sidebar-item-btn"
-                  onClick={(e) => { e.stopPropagation(); onRemoveHistory(item.id); }}
+                  onClick={(e) => { e.stopPropagation(); removeHistory(item.id); }}
                 />
               </span>
             </div>
@@ -167,7 +142,7 @@ export function HistorySidebar({
           type="text"
           size="small"
           icon={<SettingOutlined />}
-          onClick={onOpenSettings}
+          onClick={openSettings}
         >
           设置
         </Button>
@@ -175,7 +150,7 @@ export function HistorySidebar({
           type="text"
           size="small"
           icon={<InfoCircleOutlined />}
-          onClick={onOpenInfo}
+          onClick={openInfo}
         >
           关于
         </Button>
