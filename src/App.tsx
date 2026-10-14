@@ -375,6 +375,8 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
                 priceData={priceHooks.priceData}
                 listingsLoading={priceHooks.listingsLoading}
                 historyLoading={priceHooks.historyLoading}
+                listingsError={priceHooks.listingsError}
+                historyError={priceHooks.historyError}
                 fetchPriceData={priceHooks.fetchPriceData}
                 fetchPriceHistory={priceHooks.fetchPriceHistory}
                 viewTab={searchHooks.viewTab}

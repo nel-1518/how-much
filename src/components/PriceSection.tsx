@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination, Space } from "antd";
-import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined, CalculatorOutlined } from "@ant-design/icons";
+import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined, CalculatorOutlined, ReloadOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
 import { listingFields, historyFields, buildServerHueMap, renderWorldName, formatTradeTime, type GridField } from "../columns";
 import type { DcName } from "../constants";
@@ -132,6 +132,10 @@ interface PriceSectionProps {
   priceData: UniversalisResponse | null;
   listingsLoading: boolean;
   historyLoading: boolean;
+  /** 出售列表最近一次请求是否失败 */
+  listingsError: boolean;
+  /** 交易历史最近一次请求是否失败 */
+  historyError: boolean;
   fetchPriceData: (id: number, region: string, name?: string, hqOnly?: boolean) => void;
   /** 交易历史懒加载：点击标题栏「交易历史」按钮时请求 */
   fetchPriceHistory: (id: number, region: string) => void;
@@ -145,7 +149,8 @@ interface PriceSectionProps {
 /** 查价结果展示组件：大区/服务器选择栏 + 查价结果 / 价格走势与购买建议 */
 export function PriceSection({
   selectedItem, scope, dcServer, onScopeChange, onSelectServer,
-  priceData, listingsLoading, historyLoading, fetchPriceData, fetchPriceHistory,
+  priceData, listingsLoading, historyLoading, listingsError, historyError,
+  fetchPriceData, fetchPriceHistory,
   viewTab, onViewTabChange, onWiki, isDark,
 }: PriceSectionProps) {
   // 只看 HQ 开关（物品存在 HQ 品质时才可用）
@@ -197,9 +202,29 @@ export function PriceSection({
     }
   };
 
+  /** 出售列表请求失败后重新获取 */
+  const retryListings = () => {
+    fetchPriceData(selectedItem.row_id, scope, selectedItem.fields.Name, hqOnly);
+  };
+
+  /** 交易历史请求失败后重新获取 */
+  const retryHistory = () => {
+    fetchPriceHistory(selectedItem.row_id, scope);
+  };
+
+  /** 数据获取失败占位：提示 + 重新获取按钮 */
+  const fetchError = (description: string, onRetry: () => void) => (
+    <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={description}>
+      <Button type="primary" size="small" icon={<ReloadOutlined />} onClick={onRetry}>
+        重新获取
+      </Button>
+    </Empty>
+  );
+
   /** 出售列表内容：桌面端两列并排 + 移动端单列分页 */
   const listingsBody = () => {
     if (listingsLoading) return <Skeleton active paragraph={{ rows: 10 }} title={false} />;
+    if (listingsError) return fetchError("出售列表获取失败", retryListings);
     if (!priceData?.listings?.length) return <Empty description="暂无出售数据" />;
     return (
       <>
@@ -246,6 +271,7 @@ export function PriceSection({
   /** 交易历史内容：桌面端表格 + 移动端单列分页 */
   const historyBody = () => {
     if (historyLoading) return <Skeleton active paragraph={{ rows: 9 }} title={false} />;
+    if (historyError) return fetchError("交易历史获取失败", retryHistory);
     if (!priceData?.recentHistory?.length) return <Empty description="暂无交易记录" />;
     return (
       <>

@@ -53,12 +53,15 @@ function buildMerged(
  * Universalis 查价 Hook
  * - 出售列表：查询时立即请求（60 条），带内存缓存。
  * - 交易历史：不再随查价直接请求，改为调用方在需要时经 fetchPriceHistory 懒加载
- *   （/api/v2/history/{area}/{id}?entriesToReturn=120），同样带内存缓存。
+ *   /api/v2/history/{area}/{id}?entriesToReturn=120&statsWithin=0&entriesWithin=2592000
  */
 export function usePriceQuery() {
   const [priceData, setPriceData] = useState<UniversalisResponse | null>(null);
   const [listingsLoading, setListingsLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(false);
+  // 请求失败标记（供上层展示「重新获取」按钮）
+  const [listingsError, setListingsError] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
   // 出售列表按 item+区域+品质 缓存；交易历史按 item+区域 缓存（与品质无关，懒加载）
   const listingsCache = useRef<Map<string, UniversalisResponse>>(new Map());
   const historyCache = useRef<Map<string, UniversalisHistory[]>>(new Map());
@@ -76,11 +79,13 @@ export function usePriceQuery() {
       historyDataRef.current = cached;
       setPriceData(buildMerged(listingsDataRef.current, cached));
       setHistoryLoading(false);
+      setHistoryError(false);
       return;
     }
     setHistoryLoading(true);
+    setHistoryError(false);
     const path = REGION_MAP[regionKey] ?? regionKey;
-    fetch(`${UNIVERSALIS_BASE}/api/v2/history/${path}/${itemId}?entriesToReturn=120`)
+    fetch(`${UNIVERSALIS_BASE}/api/v2/history/${path}/${itemId}?entriesToReturn=120&statsWithin=0&entriesWithin=2592000`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json() as Promise<UniversalisHistoryResponse>;
@@ -91,9 +96,13 @@ export function usePriceQuery() {
         if (activeScopeRef.current !== skey) return;
         historyDataRef.current = entries;
         setPriceData(buildMerged(listingsDataRef.current, entries));
+        setHistoryError(false);
       })
       .catch(() => {
-        if (activeScopeRef.current === skey) message.error("交易历史获取失败");
+        if (activeScopeRef.current === skey) {
+          setHistoryError(true);
+          message.error("交易历史获取失败");
+        }
       })
       .finally(() => {
         if (activeScopeRef.current === skey) setHistoryLoading(false);
@@ -114,6 +123,7 @@ export function usePriceQuery() {
       setPriceData(buildMerged(cachedListings, cachedHistory));
       setListingsLoading(false);
       setHistoryLoading(false);
+      setListingsError(false);
       return;
     }
 
@@ -123,6 +133,7 @@ export function usePriceQuery() {
     setPriceData(cachedHistory ? buildMerged(null, cachedHistory) : null);
     setListingsLoading(true);
     setHistoryLoading(false);
+    setListingsError(false);
 
     // 查询目标直接传中文名："中国"→china，大区/服务器名作为路径本身（Universalis 支持）
     const path = REGION_MAP[regionKey] ?? regionKey;
@@ -139,9 +150,13 @@ export function usePriceQuery() {
         if (activeScopeRef.current !== skey) return;
         listingsDataRef.current = listingsData;
         setPriceData(buildMerged(listingsData, historyDataRef.current));
+        setListingsError(false);
       })
       .catch(() => {
-        if (activeScopeRef.current === skey) message.error("出售列表获取失败");
+        if (activeScopeRef.current === skey) {
+          setListingsError(true);
+          message.error("出售列表获取失败");
+        }
       })
       .finally(() => {
         if (activeScopeRef.current === skey) setListingsLoading(false);
@@ -152,6 +167,8 @@ export function usePriceQuery() {
     priceData,
     listingsLoading,
     historyLoading,
+    listingsError,
+    historyError,
     setPriceData,
     fetchPriceData: useCallback(
       (id: number, region: string, _name?: string, hqOnly = false) => doFetch(id, region, hqOnly),
@@ -168,6 +185,8 @@ export function usePriceQuery() {
       setPriceData(null);
       setListingsLoading(false);
       setHistoryLoading(false);
+      setListingsError(false);
+      setHistoryError(false);
     }, []),
   };
 }
