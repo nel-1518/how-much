@@ -1,12 +1,10 @@
 import { useState, useCallback, useRef, type ComponentRef } from "react";
 import { Button, Alert, type Input } from "antd";
-import type { ThemeMode } from "./constants";
 import type { BatchItem, ViewMode } from "./types";
 import { useSearchHistory } from "./hooks/useSearchHistory";
 import { usePriceQuery } from "./hooks/usePriceQuery";
 import { useItemSearch } from "./hooks/useItemSearch";
 import { useItemDatabase } from "./hooks/useItemDatabase";
-import { useRegionScope } from "./hooks/useRegionScope";
 import { useUrlQueryOpen } from "./hooks/useUrlQueryOpen";
 import { useGlobalSearchHotkeys } from "./hooks/useGlobalSearchHotkeys";
 import { HeroSection } from "./components/HeroSection";
@@ -18,18 +16,12 @@ import { PriceSection } from "./components/PriceSection";
 import { BatchPriceSection } from "./components/BatchPriceSection";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { InfoDialog } from "./components/InfoDialog";
+import { useRegionScopeContext } from "./contexts/RegionScopeContext";
 import { storage } from "./storage";
 import "./App.css";
 
-interface AppProps {
-  themeMode: ThemeMode;
-  onThemeModeChange: (mode: ThemeMode) => void;
-  /** 当前是否为深色（auto 模式下由系统偏好决定） */
-  isDark: boolean;
-}
-
-function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
-  const { scope, dcServer, setScope, selectServer } = useRegionScope();
+function App() {
+  const { scope, setScope, selectServer } = useRegionScopeContext();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("single");
@@ -152,9 +144,6 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
         onViewModeChange={handleViewModeChange}
         sidebarOpen={sidebarOpen}
         onToggleSidebar={handleToggleSidebar}
-        themeMode={themeMode}
-        isDark={isDark}
-        onThemeChange={onThemeModeChange}
       />
 
       {sidebarOpen && (
@@ -209,10 +198,6 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
         )}
         {viewMode === "batch" ? (
           <BatchPriceSection
-            scope={scope}
-            dcServer={dcServer}
-            onScopeChange={setScope}
-            onSelectServer={selectServer}
             itemDb={itemDb}
             onOpenSingleItem={handleOpenSingleItem}
           />
@@ -237,10 +222,6 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
               <PriceSection
                 key={searchHooks.selectedItem.row_id}
                 selectedItem={searchHooks.selectedItem}
-                scope={scope}
-                dcServer={dcServer}
-                onScopeChange={setScope}
-                onSelectServer={selectServer}
                 priceData={priceHooks.priceData}
                 listingsLoading={priceHooks.listingsLoading}
                 historyLoading={priceHooks.historyLoading}
@@ -252,7 +233,6 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
                 viewTab={searchHooks.viewTab}
                 onViewTabChange={searchHooks.setViewTab}
                 onWiki={searchHooks.handleWiki}
-                isDark={isDark}
               />
             )}
           </>

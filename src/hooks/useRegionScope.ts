@@ -2,8 +2,6 @@ import { useState, useCallback } from "react";
 import type { DcName } from "../constants";
 import { storage, type DcServerMap } from "../storage";
 
-export type { DcServerMap } from "../storage";
-
 /**
  * 查价范围状态：`scope` = 当前查询目标（"中国" | 大区名 | 服务器名），
  * `dcServer` = 各大区记忆的已选服务器。读写统一经由 storage 模块持久化。

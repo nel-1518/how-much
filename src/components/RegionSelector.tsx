@@ -5,28 +5,20 @@ import {
   ApartmentOutlined,
 } from "@ant-design/icons";
 import { DC_ICON_MAP, DC_NAMES, DC_WORLDS, DEFAULT_REGION, type DcName } from "../constants";
-import type { DcServerMap } from "../hooks/useRegionScope";
+import { useRegionScopeContext } from "../contexts/RegionScopeContext";
 
 interface RegionSelectorProps {
-  /** 当前查询目标："中国" | 大区名 | 服务器名 */
-  scope: string;
-  /** 各大区记忆的已选服务器 */
-  dcServer: DcServerMap;
   /** 只看 HQ 开关 */
   hqOnly: boolean;
   /** 物品是否存在 HQ 品质（hq=0 时隐藏开关） */
   canBeHq: boolean;
-  onScopeChange: (scope: string) => void;
-  onSelectServer: (dc: DcName, world: string) => void;
   onHqOnlyChange: (hqOnly: boolean) => void;
 }
 
 /** 大区/服务器选择栏：「中国」按钮 + 四个大区（主按钮快速切换 + 功能菜单选服务器）+ 只看 HQ 开关
  *  移动端按钮结构不变，仅隐藏名称文字只留图标，五个按钮平分一行宽度 */
-export function RegionSelector({
-  scope, dcServer, hqOnly, canBeHq,
-  onScopeChange, onSelectServer, onHqOnlyChange,
-}: RegionSelectorProps) {
+export function RegionSelector({ hqOnly, canBeHq, onHqOnlyChange }: RegionSelectorProps) {
+  const { scope, dcServer, setScope, selectServer } = useRegionScopeContext();
   const buildMenu = (dc: DcName): MenuProps => ({
     items: [
       {
@@ -45,7 +37,7 @@ export function RegionSelector({
     onClick: ({ key }) => {
       // 选"XX（全大区）"：key===dc，重置该大区记忆为大区名（按钮保持显示大区名）并查询大区；
       // 选服务器：key=服务器名，记忆该服务器（按钮显示服务器名）并查询该服务器
-      onSelectServer(dc, key);
+      selectServer(dc, key);
     },
   });
 
@@ -58,7 +50,7 @@ export function RegionSelector({
         size="small"
         className={`region-drop-btn china-btn${scope === DEFAULT_REGION ? " active" : ""}`}
         icon={<GlobalOutlined className="region-drop-global-icon" />}
-        onClick={() => onScopeChange(DEFAULT_REGION)}
+        onClick={() => setScope(DEFAULT_REGION)}
       >
         <span className="region-name">{DEFAULT_REGION}</span>
       </Button>
@@ -72,9 +64,9 @@ export function RegionSelector({
         // 点击主按钮：已选过服务器则查询该服务器数据，否则查询整个大区
         const handleMainClick = () => {
           if (hasServer) {
-            onSelectServer(dc, remembered);
+            selectServer(dc, remembered);
           } else {
-            onScopeChange(dc);
+            setScope(dc);
           }
         };
         const mainTitle = active

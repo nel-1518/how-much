@@ -22,8 +22,8 @@ import { renderWorldName, formatRelativeTime } from "../columns";
 import { useBatchPriceQuery } from "../hooks/useBatchPriceQuery";
 import { useSavedItemSets } from "../hooks/useSavedItemSets";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
-import { DC_NAMES, isWorldName, WORLD_ID_TO_NAME, type DcName } from "../constants";
-import type { DcServerMap } from "../hooks/useRegionScope";
+import { DC_NAMES, isWorldName, WORLD_ID_TO_NAME } from "../constants";
+import { useRegionScopeContext } from "../contexts/RegionScopeContext";
 
 interface BatchItemDb {
   status: "loading" | "ready" | "error";
@@ -33,10 +33,6 @@ interface BatchItemDb {
 }
 
 interface BatchPriceSectionProps {
-  scope: string;
-  dcServer: DcServerMap;
-  onScopeChange: (scope: string) => void;
-  onSelectServer: (dc: DcName, world: string) => void;
   itemDb: BatchItemDb;
   onOpenSingleItem: (item: BatchItem) => void;
 }
@@ -113,9 +109,8 @@ function computePrices(
 }
 
 /** 批量查价主视图：区服选择栏（顶部）+ 左批量输入 / 右已选（行内价格） */
-export function BatchPriceSection({
-  scope, dcServer, onScopeChange, onSelectServer, itemDb, onOpenSingleItem,
-}: BatchPriceSectionProps) {
+export function BatchPriceSection({ itemDb, onOpenSingleItem }: BatchPriceSectionProps) {
+  const { scope } = useRegionScopeContext();
   const batch = useBatchPriceQuery();
   const { sets, saveSet, removeSet } = useSavedItemSets();
 
@@ -349,12 +344,8 @@ export function BatchPriceSection({
   return (
     <div className="price-area batch-area">
       <RegionSelector
-        scope={scope}
-        dcServer={dcServer}
         hqOnly={hqOnly}
         canBeHq={true}
-        onScopeChange={onScopeChange}
-        onSelectServer={onSelectServer}
         onHqOnlyChange={setHqOnly}
       />
 

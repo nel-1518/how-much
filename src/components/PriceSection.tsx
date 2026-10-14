@@ -1,10 +1,9 @@
-import { lazy, Suspense, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination, Space } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined, CalculatorOutlined, ReloadOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
 import { listingFields, historyFields, buildServerHueMap, renderWorldName, formatTradeTime, renderMannequinTag, type GridField } from "../columns";
-import type { DcName } from "../constants";
-import type { DcServerMap } from "../hooks/useRegionScope";
+import { useRegionScopeContext } from "../contexts/RegionScopeContext";
 import { formatPrice, getCurrentPriceFormat, withMarketTax } from "../utils/formatPrice";
 import { storage } from "../storage";
 import { RegionSelector } from "./RegionSelector";
@@ -123,12 +122,6 @@ function TwoColumnGrid<T extends object>({
 
 interface PriceSectionProps {
   selectedItem: ItemResult;
-  /** 当前查询目标："中国" | 大区名 | 服务器名 */
-  scope: string;
-  /** 各大区记忆的已选服务器 */
-  dcServer: DcServerMap;
-  onScopeChange: (scope: string) => void;
-  onSelectServer: (dc: DcName, world: string) => void;
   priceData: UniversalisResponse | null;
   listingsLoading: boolean;
   historyLoading: boolean;
@@ -144,18 +137,17 @@ interface PriceSectionProps {
   viewTab: string;
   onViewTabChange: (v: string) => void;
   onWiki: (name: string) => void;
-  /** 当前是否为深色主题（统计图配色适配） */
-  isDark: boolean;
 }
 
 /** 查价结果展示组件：大区/服务器选择栏 + 查价结果 / 价格走势与购买建议 */
 export function PriceSection({
-  selectedItem, scope, dcServer, onScopeChange, onSelectServer,
+  selectedItem,
   priceData, listingsLoading, historyLoading, listingsError, historyError,
   filteredMannequinCount,
   fetchPriceData, fetchPriceHistory,
-  viewTab, onViewTabChange, onWiki, isDark,
+  viewTab, onViewTabChange, onWiki,
 }: PriceSectionProps) {
+  const { scope } = useRegionScopeContext();
   // 只看 HQ 开关（物品存在 HQ 品质时才可用）
   const [hqOnly, setHqOnly] = useState(false);
   // 税率开关：开启后单价/总计展示税后价（×105% 向下取整）；状态持久化，对所有物品查询生效
@@ -175,19 +167,15 @@ export function PriceSection({
   // 当前展示：出售列表 / 交易历史（交易历史由标题栏按钮切换并懒加载）
   const showHistory = viewTab === "history";
 
-  /** 查询目标变化（"中国"/大区）：更新全局状态并重新查价；若正在看历史则同步刷新历史 */
-  const handleScopeChange = (next: string) => {
-    onScopeChange(next);
-    fetchPriceData(selectedItem.row_id, next, selectedItem.fields.Name, hqOnly);
-    if (showHistory) fetchPriceHistory(selectedItem.row_id, next);
-  };
-
-  /** 选择某大区下的服务器：更新全局状态并重新查价；若正在看历史则同步刷新历史 */
-  const handleSelectServer = (dc: DcName, world: string) => {
-    onSelectServer(dc, world);
-    fetchPriceData(selectedItem.row_id, world, selectedItem.fields.Name, hqOnly);
-    if (showHistory) fetchPriceHistory(selectedItem.row_id, world);
-  };
+  /** 查询目标变化（"中国"/大区/服务器）：RegionSelector 写入 RegionScopeContext 后在此响应并重新查价；
+   *  若正在看历史则同步刷新历史。首次挂载跳过（选物品时已由 useItemSearch 发起查价）。 */
+  const prevScopeRef = useRef(scope);
+  useEffect(() => {
+    if (prevScopeRef.current === scope) return;
+    prevScopeRef.current = scope;
+    fetchPriceData(selectedItem.row_id, scope, selectedItem.fields.Name, hqOnly);
+    if (showHistory) fetchPriceHistory(selectedItem.row_id, scope);
+  }, [scope, selectedItem, hqOnly, showHistory, fetchPriceData, fetchPriceHistory]);
 
   /** 只看 HQ 开关：切换后带 hq 参数重新请求（不影响交易历史接口） */
   const handleHqOnlyToggle = (checked: boolean) => {
@@ -428,12 +416,8 @@ export function PriceSection({
 
         {/* 大区/服务器选择：与物品名/标签同行，靠右，节省高度 */}
         <RegionSelector
-          scope={scope}
-          dcServer={dcServer}
           hqOnly={hqOnly}
           canBeHq={canBeHq}
-          onScopeChange={handleScopeChange}
-          onSelectServer={handleSelectServer}
           onHqOnlyChange={handleHqOnlyToggle}
         />
       </div>
@@ -456,7 +440,6 @@ export function PriceSection({
             itemId={selectedItem.row_id}
             region={scope}
             canBeHq={canBeHq}
-            isDark={isDark}
             listings={priceData?.listings ?? []}
             hqOnly={hqOnly}
           />

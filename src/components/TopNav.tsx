@@ -10,6 +10,7 @@ import {
   UnorderedListOutlined,
 } from "@ant-design/icons";
 import { SearchSection, type SearchSectionProps } from "./SearchSection";
+import { useTheme } from "../contexts/ThemeContext";
 import type { ThemeMode } from "../constants";
 import type { ViewMode } from "../types";
 
@@ -19,9 +20,6 @@ interface TopNavProps {
   onViewModeChange: (mode: ViewMode) => void;
   sidebarOpen: boolean;
   onToggleSidebar: () => void;
-  themeMode: ThemeMode;
-  isDark: boolean;
-  onThemeChange: (mode: ThemeMode) => void;
 }
 
 const THEME_ICONS: Record<ThemeMode, ReactNode> = {
@@ -43,9 +41,10 @@ const THEME_MENU_ITEMS: MenuProps["items"] = [
 ];
 
 /** 顶部导航栏：搜索栏居中，左侧为侧栏开关，右侧为主题选择菜单 */
-export function TopNav({ search, viewMode, onViewModeChange, sidebarOpen, onToggleSidebar, themeMode, isDark, onThemeChange }: TopNavProps) {
+export function TopNav({ search, viewMode, onViewModeChange, sidebarOpen, onToggleSidebar }: TopNavProps) {
+  const { themeMode, isDark, setThemeMode } = useTheme();
   const handleThemeMenuClick: MenuProps["onClick"] = ({ key }) => {
-    onThemeChange(key as ThemeMode);
+    setThemeMode(key as ThemeMode);
   };
   // auto 模式下图标跟随系统主题
   const effectiveTheme: ThemeMode = themeMode === "auto" ? (isDark ? "dark" : "light") : themeMode;

@@ -13,6 +13,7 @@ import {
   type StatsDay,
 } from "../utils/statsApi";
 import { useCachedFetch } from "../hooks/useCachedFetch";
+import { useTheme } from "../contexts/ThemeContext";
 import { formatPrice, getCurrentPriceFormat } from "../utils/formatPrice";
 import { analyzePurchaseAdvice } from "../utils/purchaseAdvice";
 import { PurchaseAdvice } from "./PurchaseAdvice";
@@ -104,30 +105,13 @@ interface StatsChartProps {
   region: string;
   /** 物品是否存在 HQ 品质（hq=0 时只显示 nq） */
   canBeHq: boolean;
-  /** 当前是否为深色主题（图表配色适配） */
-  isDark: boolean;
   /** 前端查价结果的挂单列表（购买建议用当前挂单价对比；查价未返回时为空） */
   listings: UniversalisListing[];
   /** 只看 HQ（购买建议挂单只看 HQ） */
   hqOnly: boolean;
 }
 
-/** 主题色（与 AppWrapper token 保持一致） */
-const COLOR_PRICE = "#8b5cf6"; // 紫（--accent），平均价主线
-const COLOR_PRICE_DARK = "#a78bfa";
-// 趋势线（线性拟合）：橙色调，与紫色平均价主线区分，直观体现升降方向
-const COLOR_TREND = "#f59e0b";
-const COLOR_TREND_DARK = "#fbbf24";
-// 最高/最低价区间线：灰色系并减淡（与紫色主线形成层次）
-const COLOR_RANGE_LIGHT = "rgba(120,113,127,0.2)";
-const COLOR_RANGE_DARK = "rgba(176,174,184,0.25)";
-// 区间带填充色（更低透明度）
-const RANGE_FILL_LIGHT = "rgba(120,113,127,0.07)";
-const RANGE_FILL_DARK = "rgba(176,174,184,0.08)";
-const GRID_LIGHT = "rgba(0,0,0,0.06)";
-const GRID_DARK = "rgba(255,255,255,0.08)";
-const TEXT_LIGHT = "#78717f";
-const TEXT_DARK = "#b0aeb8";
+// 图表配色统一由 ThemeContext 提供（见 useTheme().chart）
 // 当前图表时间轴是否跨年（决定 x 轴刻度用 yyyy/mm/dd 还是 mm/dd；每次更新前刷新）
 let xLabelSpanYears = false;
 // 从左到右渐显动画进度（0~1）：仅数据变化触发的渐显动画更新，revealPlugin 按进度裁剪数据线区域
@@ -167,7 +151,8 @@ const revealPlugin: Plugin = {
  *   切换 range 时命中缓存直接使用，不重复请求（每个服务端 range 首次请求一次）
  * - 购买建议：历史统计来自服务端 advice（当前品质/range），当前挂单来自前端查价 listings，动态更新
  */
-export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }: StatsChartProps) {
+export function StatsChart({ itemId, region, canBeHq, listings, hqOnly }: StatsChartProps) {
+  const { chart: palette } = useTheme();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chartRef = useRef<Chart | null>(null);
   const [rangeDays, setRangeDays] = useState(30);
@@ -246,11 +231,11 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
       existing.destroy();
       chartRef.current = null;
     }
-    const priceColor = isDark ? COLOR_PRICE_DARK : COLOR_PRICE;
-    const rangeColor = isDark ? COLOR_RANGE_DARK : COLOR_RANGE_LIGHT;
-    const rangeFill = isDark ? RANGE_FILL_DARK : RANGE_FILL_LIGHT;
-    const gridColor = isDark ? GRID_DARK : GRID_LIGHT;
-    const textColor = isDark ? TEXT_DARK : TEXT_LIGHT;
+    const priceColor = palette.price;
+    const rangeColor = palette.range;
+    const rangeFill = palette.rangeFill;
+    const gridColor = palette.grid;
+    const textColor = palette.text;
     // x 轴日期格式：时间范围跨年则用 yyyy/mm/dd，否则 mm/dd
     xLabelSpanYears = new Set(filled.labels.map((l) => l.slice(0, 4))).size > 1;
 
@@ -402,7 +387,7 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
           type: "line" as const,
           label: "趋势线",
           data: trendData,
-          borderColor: isDark ? COLOR_TREND_DARK : COLOR_TREND,
+          borderColor: palette.trend,
           borderWidth: 2,
           borderDash: [6, 4],
           backgroundColor: "transparent",
@@ -415,7 +400,7 @@ export function StatsChart({ itemId, region, canBeHq, isDark, listings, hqOnly }
       ];
     }
     chart.update();
-  }, [filled, isDark, trendData]);
+  }, [filled, palette, trendData]);
 
   // 卸载销毁，防内存泄漏
   useEffect(() => {
