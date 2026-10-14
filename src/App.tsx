@@ -8,6 +8,7 @@ import { usePriceQuery } from "./hooks/usePriceQuery";
 import { useItemSearch } from "./hooks/useItemSearch";
 import { useItemDatabase } from "./hooks/useItemDatabase";
 import { useRegionScope } from "./hooks/useRegionScope";
+import { useUrlQueryOpen } from "./hooks/useUrlQueryOpen";
 import { HeroSection } from "./components/HeroSection";
 import { TopNav } from "./components/TopNav";
 import { SearchCard } from "./components/SearchCard";
@@ -60,6 +61,15 @@ function App({ themeMode, onThemeModeChange, isDark }: AppProps) {
     itemDb,
   });
   const { setActiveIndex, setShowResults, handleKeywordChange, selectByDbEntry } = searchHooks;
+
+  // URL 直达：?item=<id|名称>&world=<id|名称>（仅给 item 时沿用默认范围；只有 world 则无效）
+  useUrlQueryOpen({
+    itemDb,
+    defaultScope: scope,
+    openItem: selectByDbEntry,
+    selectServer,
+    setScope,
+  });
 
   // 键盘打开卡片时的状态：待补入的首字符、IME 组合中标记、顶部输入框引用
   const pendingKeyRef = useRef<string | null>(null);

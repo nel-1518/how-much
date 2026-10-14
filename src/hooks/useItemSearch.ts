@@ -79,20 +79,21 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     runSearch(trimmed);
   }, [runSearch]);
 
-  const handleSelectItem = useCallback((item: ItemResult) => {
+  const handleSelectItem = useCallback((item: ItemResult, regionOverride?: string) => {
     setActiveIndex(0);
     setKeyword(item.fields.Name);
     setShowResults(false);
     setHasSearched(true);
     setSelectedItem(item);
     setViewTab("listings");
-    fetchPriceData(item.row_id, region, item.fields.Name);
+    // regionOverride：URL 直达时本次查询范围可能与当前 state 不同步，显式指定避免用旧范围查价
+    fetchPriceData(item.row_id, regionOverride ?? region, item.fields.Name);
     addToHistory(item.row_id, item.fields.Name);
   }, [region, fetchPriceData, addToHistory]);
 
-  /** 直接选中本地数据库条目（用于粘贴唯一匹配时直接查价） */
-  const selectByDbEntry = useCallback((entry: ItemDbEntry) => {
-    handleSelectItem(toItemResult(entry));
+  /** 直接选中本地数据库条目（用于粘贴唯一匹配、URL 直达时直接查价） */
+  const selectByDbEntry = useCallback((entry: ItemDbEntry, regionOverride?: string) => {
+    handleSelectItem(toItemResult(entry), regionOverride);
   }, [handleSelectItem]);
 
   const searchFromHistory = useCallback((item: SearchHistoryItem) => {
