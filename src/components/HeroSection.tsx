@@ -9,10 +9,10 @@ export function HeroSection() {
         <DollarOutlined />
       </div>
       <Typography.Title level={1} className="hero-title">
-        FF14 市场查价
+        今天买什么
       </Typography.Title>
       <Typography.Text className="hero-desc">
-        搜索物品，查询全大区市场价格与交易记录
+        搜索物品，查询市场价格与交易记录
       </Typography.Text>
     </div>
   );

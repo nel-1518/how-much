@@ -383,8 +383,7 @@
   font-size: 36px;
   color: #fff;
   margin-bottom: 20px;
-  box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
-  animation: heroFloat 4s ease-in-out infinite;
+  box-shadow: 0 8px 8px rgba(139, 92, 246, 0.3);
 }
 
 .hero-title {
