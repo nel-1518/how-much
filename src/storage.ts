@@ -29,9 +29,12 @@ const PREFIX = "how-much:";
 
 /** 全部本地存储键（单一数据源） */
 export const STORAGE_KEYS = {
-  /** 搜索历史（普通） */
+  /** 搜索历史（含固定项，固定与否由条目的 `pinned` 字段标识） */
   searchHistory: `${PREFIX}search_history`,
-  /** 搜索历史（固定在最前） */
+  /**
+   * @deprecated 固定搜索历史已并入 `searchHistory`，本键仅用于旧数据迁移，
+   * 读取一次后会被清理，业务代码不应再写入。
+   */
   searchHistoryPinned: `${PREFIX}search_history_pinned`,
   /** 上次查询目标：中国 / 大区名 / 服务器名 */
   lastRegion: `${PREFIX}last_region`,
@@ -207,20 +210,68 @@ function loadBatchSets(): SavedBatchSet[] {
   );
 }
 
+/** 校验并规范化搜索历史条目（丢弃非法项与重复 id） */
+function normalizeHistory(list: unknown): SearchHistoryItem[] {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set<number>();
+  const out: SearchHistoryItem[] = [];
+  for (const raw of list) {
+    if (!raw || typeof raw !== "object") continue;
+    const item = raw as Partial<SearchHistoryItem>;
+    if (typeof item.id !== "number" || typeof item.name !== "string") continue;
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push({
+      id: item.id,
+      name: item.name,
+      time: typeof item.time === "number" ? item.time : 0,
+      pinned: item.pinned === true,
+    });
+  }
+  return out;
+}
+
+/** 固定项在前，同组内按时间倒序 */
+function sortHistory(list: SearchHistoryItem[]): SearchHistoryItem[] {
+  return [...list].sort(
+    (a, b) => Number(b.pinned === true) - Number(a.pinned === true) || b.time - a.time,
+  );
+}
+
+/**
+ * 读取搜索历史。
+ * 兼容旧版本：把独立的固定历史键合并进主列表（标记 pinned），随后删除该旧键。
+ */
+function loadSearchHistory(): SearchHistoryItem[] {
+  const current = normalizeHistory(readJSON<unknown>(STORAGE_KEYS.searchHistory, []));
+  let merged = current;
+
+  if (rawGet(STORAGE_KEYS.searchHistoryPinned) !== null) {
+    const legacy = normalizeHistory(readJSON<unknown>(STORAGE_KEYS.searchHistoryPinned, [])).map(
+      (h) => ({ ...h, pinned: true }),
+    );
+    const legacyIds = new Set(legacy.map((h) => h.id));
+    merged = [...legacy, ...current.filter((h) => !legacyIds.has(h.id))];
+    writeJSON(STORAGE_KEYS.searchHistory, sortHistory(merged));
+    rawRemove(STORAGE_KEYS.searchHistoryPinned);
+  }
+
+  return sortHistory(merged);
+}
+
 /**
  * 各功能域的本地存储读写器。
  * 业务代码统一通过 `storage.<域>.<方法>` 访问，避免直接操作键名。
  */
 export const storage = {
-  /** 搜索历史（普通） */
+  /**
+   * 搜索历史（固定项与普通项同存一处，固定项带 `pinned: true`）。
+   * 读取时自动迁移旧的独立固定历史键。
+   */
   searchHistory: {
-    load: (): SearchHistoryItem[] => readJSON(STORAGE_KEYS.searchHistory, []),
-    save: (list: SearchHistoryItem[]): void => writeJSON(STORAGE_KEYS.searchHistory, list),
-  },
-  /** 搜索历史（固定在最前） */
-  pinnedSearchHistory: {
-    load: (): SearchHistoryItem[] => readJSON(STORAGE_KEYS.searchHistoryPinned, []),
-    save: (list: SearchHistoryItem[]): void => writeJSON(STORAGE_KEYS.searchHistoryPinned, list),
+    load: loadSearchHistory,
+    save: (list: SearchHistoryItem[]): void =>
+      writeJSON(STORAGE_KEYS.searchHistory, sortHistory(list)),
   },
   /** 主题模式 */
   theme: {

@@ -90,7 +90,7 @@ export const DC_ICON_MAP: Record<string, string> = {
 };
 
 // 搜索历史
-export const MAX_HISTORY = 30;
+export const MAX_HISTORY = 100;
 
 // 配套服务地址
 export const HISTORY_API_BASE: string = "https://ffxiv-api.neeeel.com"

@@ -75,6 +75,7 @@ export interface SearchHistoryItem {
   id: number;
   name: string;
   time: number;
+  /** 是否固定在最前 */
   pinned?: boolean;
 }
 
