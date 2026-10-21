@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { message } from "antd";
 import { useNavigate } from "react-router";
 import type { BatchItem } from "../types";
+import { MARKET_PATH } from "../constants";
 import { useItemDb } from "../contexts/ItemDbContext";
 import { useBatchPriceQuery } from "../hooks/useBatchPriceQuery";
 import { useSavedItemSets, type SavedBatchSet } from "../hooks/useSavedItemSets";
@@ -63,10 +64,10 @@ export function BatchPage() {
     message.success("已清空全部物品集");
   }, [clearSets]);
 
-  /** 打开单个查价详情：跳回主页并携带 item 参数直达 */
+  /** 打开单个查价详情：跳到单个查价页的物品深链 */
   const handleOpenSingleItem = useCallback(
     (item: BatchItem) => {
-      navigate({ pathname: "/", search: `?item=${item.id}` });
+      navigate(`${MARKET_PATH}/${item.id}`);
     },
     [navigate],
   );

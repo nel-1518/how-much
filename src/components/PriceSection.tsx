@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Typography, Skeleton, Card, Empty, Tag, Button, message, Pagination, Space } from "antd";
 import { ShoppingCartOutlined, HistoryOutlined, CopyOutlined, LinkOutlined, SwapOutlined, CalculatorOutlined, ReloadOutlined } from "@ant-design/icons";
 import type { ItemResult, UniversalisResponse } from "../types";
@@ -154,6 +154,9 @@ export function PriceSection({
   const [taxed, setTaxed] = useState(() => storage.marketTax.load());
   // 相对时间（xx分前）定时刷新：每 30 秒更新一次基准时间
   const [nowTs, setNowTs] = useState(() => Date.now());
+  // 上一次内容高度：切换物品/范围时骨架屏按该高度占位，避免卡片高度先塌陷再撑开（页面跳动）
+  const [placeholderMinH, setPlaceholderMinH] = useState(0);
+  const cardBodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowTs(Date.now()), 30_000);
@@ -164,8 +167,24 @@ export function PriceSection({
   const historyCols = useMemo(() => historyFields(), []);
 
   const canBeHq = selectedItem.canBeHq === true;
+  const itemId = selectedItem.row_id;
   // 当前展示：出售列表 / 交易历史（交易历史由标题栏按钮切换并懒加载）
   const showHistory = viewTab === "history";
+
+  /** 切换物品时重置「只看 HQ」（组件不再随物品重新挂载，需显式复位） */
+  const prevItemIdRef = useRef(itemId);
+  useEffect(() => {
+    if (prevItemIdRef.current === itemId) return;
+    prevItemIdRef.current = itemId;
+    setHqOnly(false);
+  }, [itemId]);
+
+  /** 记录已渲染内容的高度，供下一次加载态占位 */
+  useLayoutEffect(() => {
+    if (listingsLoading || historyLoading) return;
+    const h = cardBodyRef.current?.offsetHeight ?? 0;
+    if (h > 0) setPlaceholderMinH((prev) => (prev === h ? prev : h));
+  }, [listingsLoading, historyLoading, showHistory, priceData, itemId]);
 
   /** 查询目标变化（"中国"/大区/服务器）：RegionSelector 写入 RegionScopeContext 后在此响应并重新查价；
    *  若正在看历史则同步刷新历史。首次挂载跳过（选物品时已由 useItemSearch 发起查价）。 */
@@ -212,16 +231,27 @@ export function PriceSection({
     </Empty>
   );
 
+  /** 仅当行情数据属于当前物品时才展示（避免切换瞬间闪现上一个物品的挂单） */
+  const data = priceData && (priceData.itemID === undefined || priceData.itemID === itemId) ? priceData : null;
+
+  /** 加载占位：按上一次内容高度撑开，切换物品时卡片高度不塌陷 */
+  const loadingPlaceholder = (rows: number) => (
+    <div style={placeholderMinH > 0 ? { minHeight: placeholderMinH } : undefined}>
+      <Skeleton active paragraph={{ rows }} title={false} />
+    </div>
+  );
+
   /** 出售列表内容：桌面端两列并排 + 移动端单列分页 */
   const listingsBody = () => {
-    if (listingsLoading) return <Skeleton active paragraph={{ rows: 10 }} title={false} />;
+    if (listingsLoading) return loadingPlaceholder(10);
     if (listingsError) return fetchError("出售列表获取失败", retryListings);
-    if (!priceData?.listings?.length) return <Empty description="暂无出售数据" />;
+    if (!data?.listings?.length) return <Empty description="暂无出售数据" />;
     return (
       <>
         <div className="data-table-desktop">
           <TwoColumnGrid
-            items={priceData.listings}
+            key={`${itemId}-${scope}-listings`}
+            items={data.listings}
             fields={listingCols}
             rowKey={(l) => l.listingID ?? `${l.worldName}-${l.pricePerUnit}-${l.quantity}-${l.hq}`}
             rowClassName={(_, index) => (index < 3 ? "top-three-row" : "")}
@@ -230,8 +260,8 @@ export function PriceSection({
         </div>
         <div className="data-mobile-table">
           <MobilePagedList
-            key={`${selectedItem.row_id}-${scope}-listings`}
-            items={priceData.listings}
+            key={`${itemId}-${scope}-listings`}
+            items={data.listings}
             groupKey={(l) => l.worldName}
             renderItem={(item, index, hue) => (
               <div
@@ -261,14 +291,15 @@ export function PriceSection({
 
   /** 交易历史内容：桌面端表格 + 移动端单列分页 */
   const historyBody = () => {
-    if (historyLoading) return <Skeleton active paragraph={{ rows: 9 }} title={false} />;
+    if (historyLoading) return loadingPlaceholder(9);
     if (historyError) return fetchError("交易历史获取失败", retryHistory);
-    if (!priceData?.recentHistory?.length) return <Empty description="暂无交易记录" />;
+    if (!data?.recentHistory?.length) return <Empty description="暂无交易记录" />;
     return (
       <>
         <div className="data-table-desktop">
           <TwoColumnGrid
-            items={priceData.recentHistory}
+            key={`${itemId}-${scope}-history`}
+            items={data.recentHistory}
             fields={historyCols}
             rowKey={(h) => `${h.timestamp}-${h.worldName}-${h.pricePerUnit}-${h.quantity}-${h.hq}`}
             groupKey={(h) => h.worldName}
@@ -276,8 +307,8 @@ export function PriceSection({
         </div>
         <div className="data-mobile-table">
           <MobilePagedList
-            key={`${selectedItem.row_id}-${scope}-history`}
-            items={priceData.recentHistory}
+            key={`${itemId}-${scope}-history`}
+            items={data.recentHistory}
             groupKey={(h) => h.worldName}
             renderItem={(item, _index, hue) => (
               <div
@@ -356,7 +387,9 @@ export function PriceSection({
         </Space>
       }
     >
-      {showHistory ? historyBody() : listingsBody()}
+      <div ref={cardBodyRef}>
+        {showHistory ? historyBody() : listingsBody()}
+      </div>
     </Card>
   );
 
@@ -440,7 +473,7 @@ export function PriceSection({
             itemId={selectedItem.row_id}
             region={scope}
             canBeHq={canBeHq}
-            listings={priceData?.listings ?? []}
+            listings={data?.listings ?? []}
             hqOnly={hqOnly}
           />
         </Suspense>

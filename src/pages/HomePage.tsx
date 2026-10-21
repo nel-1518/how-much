@@ -1,9 +1,12 @@
 import { useState, useCallback, useMemo, useRef, type ComponentRef } from "react";
 import type { Input } from "antd";
+import type { ItemDbEntry, ItemResult, SearchHistoryItem } from "../types";
+import { APP_TITLE } from "../constants";
 import { useSearchHistory } from "../hooks/useSearchHistory";
 import { usePriceQuery } from "../hooks/usePriceQuery";
 import { useItemSearch } from "../hooks/useItemSearch";
-import { useUrlQueryOpen } from "../hooks/useUrlQueryOpen";
+import { useItemUrlSync } from "../hooks/useItemUrlSync";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useGlobalSearchHotkeys } from "../hooks/useGlobalSearchHotkeys";
 import { HeroSection } from "../components/HeroSection";
 import { SearchCard } from "../components/SearchCard";
@@ -16,7 +19,7 @@ import { useItemDb } from "../contexts/ItemDbContext";
 import { useDialogs } from "../contexts/DialogsContext";
 import { SearchHistoryProvider, type SearchHistoryValue } from "../contexts/SearchHistoryContext";
 
-/** 主页（单个查价）：顶部搜索 + 首页历史 / 查价结果 + 搜索历史侧栏 */
+/** 主页（单个查价）：顶部搜索 + 首页历史 / 查价结果 + 搜索历史侧栏，地址栏与选中物品双向同步 */
 export function HomePage() {
   const { scope, setScope, selectServer } = useRegionScopeContext();
   const { settingsOpen, infoOpen } = useDialogs();
@@ -34,16 +37,46 @@ export function HomePage() {
     clearPrice: priceHooks.clearPrice,
     itemDb,
   });
-  const { setActiveIndex, setShowResults, handleKeywordChange, selectByDbEntry } = searchHooks;
+  const {
+    setActiveIndex,
+    setShowResults,
+    handleKeywordChange,
+    selectedItem,
+    selectByDbEntry,
+    handleSelectItem,
+    searchFromHistory,
+    resetSelection,
+  } = searchHooks;
 
-  // URL 直达：?item=<id|名称>&world=<id|名称>（仅给 item 时沿用默认范围；只有 world 则无效）
-  useUrlQueryOpen({
+  // 地址栏同步：状态 → 地址（syncUrlForItem）、地址 → 状态（链接直达 / 前进后退）
+  const { syncUrlForItem } = useItemUrlSync({
     itemDb,
-    defaultScope: scope,
-    openItem: selectByDbEntry,
-    selectServer,
+    scope,
     setScope,
+    selectServer,
+    openItem: selectByDbEntry,
+    resetSelection,
+    selectedId: selectedItem?.row_id ?? null,
   });
+
+  // 网页标题：选中物品时为「物品名 - 这个多少钱」
+  useDocumentTitle(selectedItem ? `${selectedItem.fields.Name} - ${APP_TITLE}` : APP_TITLE);
+
+  /** 所有选中入口统一先写地址栏（push），再执行查价 */
+  const openItem = useCallback((item: ItemResult, regionOverride?: string) => {
+    syncUrlForItem(item.row_id);
+    handleSelectItem(item, regionOverride);
+  }, [syncUrlForItem, handleSelectItem]);
+
+  const openByDbEntry = useCallback((entry: ItemDbEntry) => {
+    syncUrlForItem(entry.id);
+    selectByDbEntry(entry);
+  }, [syncUrlForItem, selectByDbEntry]);
+
+  const openFromHistory = useCallback((item: SearchHistoryItem) => {
+    syncUrlForItem(item.id);
+    searchFromHistory(item);
+  }, [syncUrlForItem, searchFromHistory]);
 
   // 顶部搜索输入框引用（键盘唤起时聚焦 / 切换 Tab 时读取内容）
   const topInputRef = useRef<ComponentRef<typeof Input> | null>(null);
@@ -71,15 +104,15 @@ export function HomePage() {
     setActiveIndex,
     setShowResults,
     findExactName,
-    selectByDbEntry,
+    selectByDbEntry: openByDbEntry,
   });
 
   // 搜索历史上下文：数据来自 useSearchHistory，选中 / 回搜来自 useItemSearch
   const historyValue = useMemo<SearchHistoryValue>(
     () => ({
       sortedHistory: historyHooks.sortedHistory,
-      activeItemId: searchHooks.selectedItem?.row_id ?? null,
-      searchFromHistory: searchHooks.searchFromHistory,
+      activeItemId: selectedItem?.row_id ?? null,
+      searchFromHistory: openFromHistory,
       removeHistory: historyHooks.removeHistory,
       clearHistory: historyHooks.clearHistory,
       togglePin: historyHooks.togglePin,
@@ -89,8 +122,8 @@ export function HomePage() {
       historyHooks.removeHistory,
       historyHooks.clearHistory,
       historyHooks.togglePin,
-      searchHooks.selectedItem,
-      searchHooks.searchFromHistory,
+      selectedItem,
+      openFromHistory,
     ],
   );
 
@@ -110,7 +143,7 @@ export function HomePage() {
               focusOnMount={focusCardOnOpen}
               onKeywordChange={searchHooks.handleKeywordChange}
               onSearch={searchHooks.doSearch}
-              onSelectItem={searchHooks.handleSelectItem}
+              onSelectItem={openItem}
               onMoveActive={searchHooks.moveActiveIndex}
               onActivate={searchHooks.setActiveIndex}
               onClose={closeSearchCard}
@@ -126,7 +159,7 @@ export function HomePage() {
           inputRef: topInputRef,
           onKeywordChange: handleTopKeywordChange,
           onSearch: searchHooks.doSearch,
-          onSelectItem: searchHooks.handleSelectItem,
+          onSelectItem: openItem,
           onMoveActive: searchHooks.moveActiveIndex,
         }}
       >
@@ -139,10 +172,9 @@ export function HomePage() {
           </>
         )}
 
-        {searchHooks.selectedItem && (
+        {selectedItem && (
           <PriceSection
-            key={searchHooks.selectedItem.row_id}
-            selectedItem={searchHooks.selectedItem}
+            selectedItem={selectedItem}
             priceData={priceHooks.priceData}
             listingsLoading={priceHooks.listingsLoading}
             historyLoading={priceHooks.historyLoading}

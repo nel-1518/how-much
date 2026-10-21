@@ -102,6 +102,10 @@ export const UNIVERSALIS_BASE: string = "https://universalis.app"
 // 默认查询目标（上次选中大区由 storage 持久化）
 export const DEFAULT_REGION = "中国";
 
+// 站点基础标题与单个查价页路径（地址栏深链：/market/{物品id}/{区服id}）
+export const APP_TITLE = "这个多少钱";
+export const MARKET_PATH = "/market";
+
 // 历史侧栏
 export const MIN_SIDEBAR_W = 220;
 export const MAX_SIDEBAR_W = 480;

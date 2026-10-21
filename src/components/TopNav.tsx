@@ -13,7 +13,7 @@ import {
 import { SearchSection, type SearchSectionProps } from "./SearchSection";
 import { useTheme } from "../contexts/ThemeContext";
 import { useSidebar } from "../contexts/SidebarContext";
-import type { ThemeMode } from "../constants";
+import { MARKET_PATH, type ThemeMode } from "../constants";
 import type { ViewMode } from "../types";
 
 interface TopNavProps {
@@ -73,7 +73,7 @@ export function TopNav({ search }: TopNavProps) {
             size="small"
             className="view-mode-seg"
             value={viewMode}
-            onChange={(v) => navigate(v === "batch" ? "/batch" : "/")}
+            onChange={(v) => navigate(v === "batch" ? "/batch" : MARKET_PATH)}
             options={[
               { label: <span><SearchOutlined /><span className="seg-label">单个查价</span></span>, value: "single" },
               { label: <span><UnorderedListOutlined /><span className="seg-label">批量查价</span></span>, value: "batch" },

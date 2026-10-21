@@ -161,6 +161,18 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     window.open(`https://ff14.huijiwiki.com/wiki/物品:${encodeURIComponent(name)}`, "_blank");
   }, []);
 
+  /** 清空当前选中（地址回到单个查价首页时调用，含在途查价请求与非缓存数据） */
+  const resetSelection = useCallback(() => {
+    setSelectedItem(null);
+    setHasSearched(false);
+    setKeyword("");
+    setResults([]);
+    setShowResults(false);
+    setViewTab("listings");
+    setActiveIndex(0);
+    clearPrice();
+  }, [clearPrice]);
+
   return {
     keyword,
     results, loading, hasSearched,
@@ -174,5 +186,6 @@ export function useItemSearch({ region, fetchPriceData, addToHistory, clearPrice
     searchFromHistory,
     handleKeywordChange,
     handleWiki,
+    resetSelection,
   };
 }
