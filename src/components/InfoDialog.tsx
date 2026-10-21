@@ -77,7 +77,7 @@ export function InfoDialog({ open, onClose, itemDbVersion }: InfoDialogProps) {
       <div className="settings-shortcuts">
         <div className="settings-shortcut">
           <span className="settings-shortcut-keys"><kbd>Ctrl+V</kbd></span>
-          <span className="settings-shortcut-desc">粘贴物品名直接查价</span>
+          <span className="settings-shortcut-desc">粘贴物品名快速查价</span>
         </div>
         <div className="settings-shortcut">
           <span className="settings-shortcut-keys"><kbd>Tab</kbd></span>

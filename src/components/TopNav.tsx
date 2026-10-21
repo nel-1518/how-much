@@ -1,19 +1,15 @@
-import type { ReactNode } from "react";
-import { Button, Dropdown, Segmented, type MenuProps } from "antd";
+import { Button, Segmented } from "antd";
 import { useLocation, useNavigate } from "react-router";
 import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
-  SyncOutlined,
-  SunOutlined,
-  MoonOutlined,
+  HomeOutlined,
   SearchOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
 import { SearchSection, type SearchSectionProps } from "./SearchSection";
-import { useTheme } from "../contexts/ThemeContext";
 import { useSidebar } from "../contexts/SidebarContext";
-import { MARKET_PATH, type ThemeMode } from "../constants";
+import { MARKET_PATH } from "../constants";
 import type { ViewMode } from "../types";
 
 interface TopNavProps {
@@ -21,38 +17,13 @@ interface TopNavProps {
   search?: SearchSectionProps;
 }
 
-const THEME_ICONS: Record<ThemeMode, ReactNode> = {
-  auto: <SyncOutlined />,
-  light: <SunOutlined />,
-  dark: <MoonOutlined />,
-};
-
-const THEME_LABELS: Record<ThemeMode, string> = {
-  auto: "自动",
-  light: "浅色",
-  dark: "深色",
-};
-
-const THEME_MENU_ITEMS: MenuProps["items"] = [
-  { key: "auto", label: "跟随系统", icon: <SyncOutlined /> },
-  { key: "light", label: "浅色", icon: <SunOutlined /> },
-  { key: "dark", label: "深色", icon: <MoonOutlined /> },
-];
-
-/** 顶部导航栏：搜索栏居中，左侧为侧栏开关，右侧为视图切换与主题选择菜单 */
+/** 顶部导航栏：搜索栏居中，左侧为侧栏开关（及返回主页），右侧为视图切换 */
 export function TopNav({ search }: TopNavProps) {
-  const { themeMode, isDark, setThemeMode } = useTheme();
   const { open: sidebarOpen, toggle: onToggleSidebar } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   // 当前视图由路由决定：/batch 为批量查价，其余为单个查价
   const viewMode: ViewMode = location.pathname.startsWith("/batch") ? "batch" : "single";
-  const handleThemeMenuClick: MenuProps["onClick"] = ({ key }) => {
-    setThemeMode(key as ThemeMode);
-  };
-  // auto 模式下图标跟随系统主题
-  const effectiveTheme: ThemeMode = themeMode === "auto" ? (isDark ? "dark" : "light") : themeMode;
-
   return (
     <header className="top-nav">
       <div className="top-nav-inner">
@@ -63,6 +34,14 @@ export function TopNav({ search }: TopNavProps) {
             icon={sidebarOpen ? <MenuFoldOutlined /> : <MenuUnfoldOutlined />}
             title={sidebarOpen ? "收起侧栏" : "展开侧栏"}
             onClick={onToggleSidebar}
+          />
+          <Button
+            type="text"
+            className="sidebar-toggle home-btn"
+            icon={<HomeOutlined />}
+            title="返回主页"
+            aria-label="返回主页"
+            onClick={() => navigate(MARKET_PATH)}
           />
         </div>
         <div className="top-nav-search">
@@ -79,22 +58,6 @@ export function TopNav({ search }: TopNavProps) {
               { label: <span><UnorderedListOutlined /><span className="seg-label">批量查价</span></span>, value: "batch" },
             ]}
           />
-          <Dropdown
-            menu={{
-              items: THEME_MENU_ITEMS,
-              selectedKeys: [themeMode],
-              onClick: handleThemeMenuClick,
-            }}
-            trigger={["click"]}
-            placement="bottomRight"
-          >
-            <Button
-              type="text"
-              className="theme-toggle"
-              title={`主题：${THEME_LABELS[themeMode]}`}
-              icon={THEME_ICONS[effectiveTheme]}
-            />
-          </Dropdown>
         </div>
       </div>
     </header>

@@ -35,7 +35,8 @@
   min-width: 0;
   display: flex;
   justify-content: center;
-  padding: 0 232px 0 56px;
+  /* 左侧预留「侧栏开关 + 返回主页」两个按钮的位置 */
+  padding: 0 232px 0 104px;
 }
 
 /* ===== 导航栏两侧图标（贴页面左右边缘） ===== */
@@ -51,6 +52,7 @@
 
 .top-nav-left {
   left: 16px;
+  gap: 4px;
 }
 
 .top-nav-right {
@@ -85,35 +87,6 @@
 .sidebar-toggle:hover {
   color: var(--accent) !important;
   background: var(--accent-bg) !important;
-}
-
-.theme-toggle {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px !important;
-  font-size: 18px;
-  color: var(--text-secondary) !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.25s ease !important;
-}
-
-.theme-toggle:hover {
-  color: var(--accent) !important;
-  background: var(--accent-bg) !important;
-}
-
-.theme-toggle[data-mode="auto"] {
-  color: var(--text-secondary) !important;
-}
-
-.theme-toggle[data-mode="light"] {
-  color: var(--gold) !important;
-}
-
-.theme-toggle[data-mode="dark"] {
-  color: var(--accent) !important;
 }
 
 /* ===== 历史侧栏 ===== */
@@ -477,7 +450,7 @@
   }
 
   .seg-label { display: none; }
-  .top-nav-search { padding: 0 128px 0 52px; }
+  .top-nav-search { padding: 0 128px 0 98px; }
 
   /* 移动端侧栏为覆盖式抽屉：不预留空间，主内容保持居中 */
   .app-shell.sidebar-open {
